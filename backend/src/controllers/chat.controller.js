@@ -31,4 +31,15 @@ const history = async (req, res) => {
   }
 };
 
-module.exports = { saveMessage, history };
+// POST /api/chat — REST fallback for sending messages (serverless-compatible)
+const send = async (req, res) => {
+  try {
+    const { pencaId, userId } = req.user;
+    const message = await saveMessage({ pencaId, userId, content: req.body.content });
+    return res.status(201).json({ message });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+module.exports = { saveMessage, history, send };

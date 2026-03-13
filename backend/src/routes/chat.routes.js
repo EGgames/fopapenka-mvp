@@ -6,5 +6,6 @@ const router = Router();
 router.use(auth);
 
 router.get('/', ctrl.history);
+router.post('/', ctrl.send);
 
 module.exports = router;

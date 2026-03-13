@@ -11,4 +11,7 @@ export default defineConfig({
       '/socket.io': { target: 'http://backend:4000', ws: true },
     },
   },
+  build: {
+    outDir: 'dist',
+  },
 });

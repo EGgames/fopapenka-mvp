@@ -9,21 +9,58 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const bottomRef = useRef(null);
+  const socketRef = useRef(null);
+
+  const loadMessages = () =>
+    api.get('/chat').then(({ data }) => setMessages(data.messages));
 
   useEffect(() => {
-    api.get('/chat').then(({ data }) => setMessages(data.messages));
-    const socket = getSocket();
-    socket.on('chat:message', (msg) => setMessages((prev) => [...prev, msg]));
-    return () => socket.off('chat:message');
+    loadMessages();
+
+    // Try Socket.io; fall back to polling if it can't connect
+    try {
+      const socket = getSocket();
+      socketRef.current = socket;
+      socket.on('chat:message', (msg) => setMessages((prev) => [...prev, msg]));
+
+      // If socket fails to connect within 3s, start polling
+      const fallbackTimer = setTimeout(() => {
+        if (!socket.connected) {
+          socketRef.current = null;
+          const interval = setInterval(loadMessages, 3000);
+          socket.off('chat:message');
+          socket.disconnect();
+          // Store interval for cleanup
+          fallbackTimer._pollInterval = interval;
+        }
+      }, 3000);
+
+      return () => {
+        clearTimeout(fallbackTimer);
+        if (fallbackTimer._pollInterval) clearInterval(fallbackTimer._pollInterval);
+        socket.off('chat:message');
+      };
+    } catch {
+      // No socket available, use polling
+      const interval = setInterval(loadMessages, 3000);
+      return () => clearInterval(interval);
+    }
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const send = (e) => {
+  const send = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    getSocket().emit('chat:send', { content: text.trim() });
+    const content = text.trim();
     setText('');
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('chat:send', { content });
+    } else {
+      await api.post('/chat', { content });
+      await loadMessages();
+    }
   };
 
   return (
