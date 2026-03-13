@@ -46,3 +46,4 @@ tests-java/target/
 tests/target/
 allure-results/
 allure-report/
+.vercel
