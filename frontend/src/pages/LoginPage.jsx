@@ -20,7 +20,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', form);
+      const { data } = await api.post('/auth/login', {
+        ...form,
+        invite_code: form.invite_code.toUpperCase(),
+      });
       setAuth({ token: data.token, nickname: data.nickname, role: data.role, penca: data.penca });
       navigate('/');
     } catch (err) {
