@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: fopapenka_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fopapenka
+      POSTGRES_PASSWORD: fopapenka_secret
+      POSTGRES_DB: fopapenka_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: fopapenka_backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: fopapenka
+      DB_PASSWORD: fopapenka_secret
+      DB_NAME: fopapenka_dev
+      JWT_SECRET: dev_super_secret_change_in_prod
+      JWT_EXPIRES_IN: 24h
+      JWT_REMEMBER_EXPIRES_IN: 7d
+    ports:
+      - '4001:4000'
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: fopapenka_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:4001/api
+      VITE_SOCKET_URL: http://localhost:4001
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+
+volumes:
+  pgdata:
