@@ -28,6 +28,12 @@ Thumbs.db
 # Docker volumes
 pgdata/
 
+# Neon
+.neon
+
+# Agent skills lock
+skills-lock.json
+
 # IDE
 .idea/
 *.iml
