@@ -30,28 +30,43 @@ export default function Layout({ children }) {
 
     // Socket: escuchar notificaciones de nuevos mensajes
     let socket;
+    let pollInterval;
+    const startPolling = () => {
+      pollInterval = setInterval(() => {
+        if (window.location.pathname !== '/chat') {
+          api.get('/chat/unread').then(({ data }) => useChatNotifStore.getState().setUnread(data.unread)).catch(() => {});
+        }
+      }, 15000);
+    };
+
     try {
       socket = getSocket();
       const handleNotif = (data) => {
-        // Solo incrementar si no estamos en /chat
         if (window.location.pathname !== '/chat') {
           useChatNotifStore.getState().increment();
-          // Notificación del browser si la pestaña no tiene foco
           if (document.hidden && Notification.permission === 'granted') {
             new Notification(`💬 ${data.nickname}`, { body: data.content, tag: 'fopapenka-chat' });
           }
         }
       };
       socket.on('chat:notification', handleNotif);
-      return () => { socket.off('chat:notification', handleNotif); };
-    } catch {
-      // Sin socket, polling cada 15s
-      const interval = setInterval(() => {
-        if (window.location.pathname !== '/chat') {
-          api.get('/chat/unread').then(({ data }) => useChatNotifStore.getState().setUnread(data.unread)).catch(() => {});
+
+      // Si el socket no conecta en 3s, usar polling (Vercel serverless no soporta WebSocket)
+      const fallbackTimer = setTimeout(() => {
+        if (!socket.connected) {
+          socket.off('chat:notification', handleNotif);
+          startPolling();
         }
-      }, 15000);
-      return () => clearInterval(interval);
+      }, 3000);
+
+      return () => {
+        clearTimeout(fallbackTimer);
+        socket.off('chat:notification', handleNotif);
+        if (pollInterval) clearInterval(pollInterval);
+      };
+    } catch {
+      startPolling();
+      return () => { if (pollInterval) clearInterval(pollInterval); };
     }
   }, [token]);
 
