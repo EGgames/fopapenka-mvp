@@ -291,19 +291,18 @@ function FixturesTab({ tournamentId }) {
               {fixture.Matches.map((m) => {
                 const fmtDate = m.match_date ? new Date(m.match_date).toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + new Date(m.match_date).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : null;
                 return (
-                <div key={m.id} className="px-4 py-2 flex items-center justify-between text-sm">
-                  <span className="flex-1 text-right pr-2 font-medium">{m.homeTeam?.name}</span>
-                  <div className="flex flex-col items-center">
-                    <span className={`px-3 py-1 rounded text-xs font-bold ${m.status === 'played' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {m.status === 'played' ? `${m.home_score} - ${m.away_score}` : 'vs'}
-                    </span>
-                    {fmtDate && <span className="text-[10px] text-gray-400 mt-0.5">🕐 {fmtDate}</span>}
+                  <div key={m.id} className="px-4 py-2 flex items-center justify-between text-sm">
+                    <span className="flex-1 text-right pr-2 font-medium">{m.homeTeam?.name}</span>
+                    <div className="flex flex-col items-center">
+                      <span className={`px-3 py-1 rounded text-xs font-bold ${m.status === 'played' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {m.status === 'played' ? `${m.home_score} - ${m.away_score}` : 'vs'}
+                      </span>
+                      {fmtDate && <span className="text-[10px] text-gray-400 mt-0.5">🕐 {fmtDate}</span>}
+                    </div>
+                    <span className="flex-1 pl-2 font-medium">{m.awayTeam?.name}</span>
                   </div>
-                  <span className="flex-1 pl-2 font-medium">{m.awayTeam?.name}</span>
-                </div>
                 );
-              }
-              ))}
+              })}
             </div>
           ) : (
             <p className="text-gray-400 text-center py-3 text-xs">Sin partidos</p>
