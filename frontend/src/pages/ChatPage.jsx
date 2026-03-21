@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import { getSocket } from '../api/socket';
 import { useAuthStore } from '../store/authStore';
+import { useChatNotifStore } from '../store/chatNotifStore';
 
 export default function ChatPage() {
   const nickname = useAuthStore((s) => s.nickname);
@@ -12,7 +13,15 @@ export default function ChatPage() {
   const socketRef = useRef(null);
 
   const loadMessages = () =>
-    api.get('/chat').then(({ data }) => setMessages(data.messages));
+    api.get('/chat').then(({ data }) => {
+      setMessages(data.messages);
+      // Marcar como leído el último mensaje
+      if (data.messages.length > 0) {
+        const lastId = data.messages[data.messages.length - 1].id;
+        api.put('/chat/read', { last_read_message_id: lastId }).catch(() => {});
+        useChatNotifStore.getState().clear();
+      }
+    });
 
   useEffect(() => {
     loadMessages();
@@ -21,7 +30,12 @@ export default function ChatPage() {
     try {
       const socket = getSocket();
       socketRef.current = socket;
-      socket.on('chat:message', (msg) => setMessages((prev) => [...prev, msg]));
+      socket.on('chat:message', (msg) => {
+        setMessages((prev) => [...prev, msg]);
+        // Marcar como leído inmediatamente porque estamos en el chat
+        api.put('/chat/read', { last_read_message_id: msg.id }).catch(() => {});
+        useChatNotifStore.getState().clear();
+      });
 
       // If socket fails to connect within 3s, start polling
       const fallbackTimer = setTimeout(() => {

@@ -1,4 +1,5 @@
-const { ChatMessage, User } = require('../models');
+const { ChatMessage, ChatReadCursor, User } = require('../models');
+const { Op } = require('sequelize');
 
 // Guarda un mensaje (invocado desde el socket y desde la ruta REST)
 const saveMessage = async ({ pencaId, userId, content }) => {
@@ -42,4 +43,46 @@ const send = async (req, res) => {
   }
 };
 
-module.exports = { saveMessage, history, send };
+// PUT /api/chat/read — marca hasta qué mensaje leyó el usuario
+const markRead = async (req, res) => {
+  try {
+    const { pencaId, userId } = req.user;
+    const { last_read_message_id } = req.body;
+
+    await ChatReadCursor.upsert({
+      user_id: userId,
+      penca_id: pencaId,
+      last_read_message_id,
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/chat/unread — cantidad de mensajes no leídos
+const unreadCount = async (req, res) => {
+  try {
+    const { pencaId, userId } = req.user;
+
+    const cursor = await ChatReadCursor.findOne({
+      where: { user_id: userId, penca_id: pencaId },
+    });
+    const lastReadId = cursor?.last_read_message_id || 0;
+
+    const count = await ChatMessage.count({
+      where: {
+        penca_id: pencaId,
+        id: { [Op.gt]: lastReadId },
+        user_id: { [Op.ne]: userId },
+      },
+    });
+
+    return res.json({ unread: count });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { saveMessage, history, send, markRead, unreadCount };

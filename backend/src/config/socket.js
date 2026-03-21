@@ -36,6 +36,12 @@ const initSocket = (server) => {
           content: data.content,
         });
         io.to(`penca:${pencaId}`).emit('chat:message', message);
+        // Notificar a todos menos al autor que hay un mensaje nuevo
+        socket.to(`penca:${pencaId}`).emit('chat:notification', {
+          id: message.id,
+          nickname: message.User?.nickname,
+          content: message.content,
+        });
       } catch (err) {
         socket.emit('chat:error', { error: err.message });
       }

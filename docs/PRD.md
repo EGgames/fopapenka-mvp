@@ -1977,4 +1977,4 @@ npm run db:seed
 
 ---
 
-**Fin del Documento de Requisitos del Producto (PRD) — Fopapenka MVP v1.1**
+**Fin del Documento de Requisitos del Producto (PRD) — Fopapenka MVP v1.3**

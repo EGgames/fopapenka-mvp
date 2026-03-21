@@ -1,7 +1,10 @@
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../store/authStore';
-import { disconnectSocket } from '../api/socket';
+import { useChatNotifStore } from '../store/chatNotifStore';
+import { disconnectSocket, getSocket } from '../api/socket';
+import api from '../api/client';
 
 const navItems = [
   { to: '/', label: 'Inicio', icon: '🏠' },
@@ -11,10 +14,62 @@ const navItems = [
 ];
 
 export default function Layout({ children }) {
-  const { nickname, penca, role } = useAuthStore(useShallow((s) => ({ nickname: s.nickname, penca: s.penca, role: s.role })));
+  const { nickname, penca, role, token } = useAuthStore(useShallow((s) => ({ nickname: s.nickname, penca: s.penca, role: s.role, token: s.token })));
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const unread = useChatNotifStore((s) => s.unread);
+  const originalTitle = useRef(document.title);
+
+  // Cargar no leídos al montar + escuchar notificaciones socket
+  useEffect(() => {
+    if (!token) return;
+
+    // Cargar conteo inicial
+    api.get('/chat/unread').then(({ data }) => useChatNotifStore.getState().setUnread(data.unread)).catch(() => {});
+
+    // Socket: escuchar notificaciones de nuevos mensajes
+    let socket;
+    try {
+      socket = getSocket();
+      const handleNotif = (data) => {
+        // Solo incrementar si no estamos en /chat
+        if (window.location.pathname !== '/chat') {
+          useChatNotifStore.getState().increment();
+          // Notificación del browser si la pestaña no tiene foco
+          if (document.hidden && Notification.permission === 'granted') {
+            new Notification(`💬 ${data.nickname}`, { body: data.content, tag: 'fopapenka-chat' });
+          }
+        }
+      };
+      socket.on('chat:notification', handleNotif);
+      return () => { socket.off('chat:notification', handleNotif); };
+    } catch {
+      // Sin socket, polling cada 15s
+      const interval = setInterval(() => {
+        if (window.location.pathname !== '/chat') {
+          api.get('/chat/unread').then(({ data }) => useChatNotifStore.getState().setUnread(data.unread)).catch(() => {});
+        }
+      }, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [token]);
+
+  // Actualizar título de pestaña con conteo
+  useEffect(() => {
+    if (unread > 0) {
+      document.title = `(${unread}) ${originalTitle.current}`;
+    } else {
+      document.title = originalTitle.current;
+    }
+  }, [unread]);
+
+  // Pedir permiso de notificaciones
+  useEffect(() => {
+    if (token && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, [token]);
 
   const handleLogout = () => {
     disconnectSocket();
@@ -38,9 +93,14 @@ export default function Layout({ children }) {
         <div className="flex justify-around">
           {navItems.map((item) => (
             <Link key={item.to} to={item.to}
-              className={`flex flex-col items-center py-2 px-3 text-xs ${pathname === item.to ? 'text-green-700 font-semibold' : 'text-gray-400'}`}>
+              className={`relative flex flex-col items-center py-2 px-3 text-xs ${pathname === item.to ? 'text-green-700 font-semibold' : 'text-gray-400'}`}>
               <span className="text-lg">{item.icon}</span>
               {item.label}
+              {item.to === '/chat' && unread > 0 && (
+                <span className="absolute -top-1 right-0 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
             </Link>
           ))}
         </div>
