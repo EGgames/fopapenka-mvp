@@ -1,5 +1,5 @@
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../store/authStore';
 import { useChatNotifStore } from '../store/chatNotifStore';
@@ -19,7 +19,9 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const unread = useChatNotifStore((s) => s.unread);
+  const toast = useChatNotifStore((s) => s.toast);
   const originalTitle = useRef(document.title);
+  const prevUnread = useRef(0);
 
   // Cargar no leídos al montar + escuchar notificaciones socket
   useEffect(() => {
@@ -44,6 +46,7 @@ export default function Layout({ children }) {
       const handleNotif = (data) => {
         if (window.location.pathname !== '/chat') {
           useChatNotifStore.getState().increment();
+          useChatNotifStore.getState().showToast(data);
           if (document.hidden && Notification.permission === 'granted') {
             new Notification(`💬 ${data.nickname}`, { body: data.content, tag: 'fopapenka-chat' });
           }
@@ -69,6 +72,17 @@ export default function Layout({ children }) {
       return () => { if (pollInterval) clearInterval(pollInterval); };
     }
   }, [token]);
+
+  // Toast cuando polling detecta mensajes nuevos (sin socket)
+  useEffect(() => {
+    if (unread > prevUnread.current && prevUnread.current >= 0 && pathname !== '/chat') {
+      const diff = unread - prevUnread.current;
+      if (diff > 0 && diff <= 5) {
+        useChatNotifStore.getState().showToast({ id: Date.now(), nickname: '', content: `${diff} mensaje${diff > 1 ? 's' : ''} nuevo${diff > 1 ? 's' : ''} en el chat` });
+      }
+    }
+    prevUnread.current = unread;
+  }, [unread, pathname]);
 
   // Actualizar título de pestaña con conteo
   useEffect(() => {
@@ -104,6 +118,20 @@ export default function Layout({ children }) {
         </div>
       </header>
       <main>{children}</main>
+      {/* Toast notification */}
+      {toast && (
+        <div
+          onClick={() => { useChatNotifStore.getState().hideToast(); navigate('/chat'); }}
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[100] bg-green-700 text-white rounded-xl shadow-2xl px-4 py-3 max-w-xs cursor-pointer animate-slide-in flex items-center gap-3 border border-green-600"
+        >
+          <span className="text-2xl">💬</span>
+          <div className="flex-1 min-w-0">
+            {toast.nickname && <p className="text-sm font-semibold truncate">{toast.nickname}</p>}
+            <p className="text-sm opacity-90 truncate">{toast.content}</p>
+          </div>
+          <button onClick={(e) => { e.stopPropagation(); useChatNotifStore.getState().hideToast(); }} className="text-green-200 hover:text-white text-lg ml-1">✕</button>
+        </div>
+      )}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t sm:hidden z-50">
         <div className="flex justify-around">
           {navItems.map((item) => (
