@@ -160,4 +160,76 @@ const batchSetResults = async (req, res) => {
   }
 };
 
-module.exports = { create, setResult, resetResult, batchSetResults };
+// PUT /api/matches/:id  (admin — edita partido programado)
+const updateMatch = async (req, res) => {
+  try {
+    const match = await Match.findByPk(req.params.id);
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+    if (match.status === 'played') {
+      return res.status(400).json({ error: 'No se puede editar un partido ya jugado' });
+    }
+
+    const { home_team_id, away_team_id, match_date } = req.body;
+    const newHome = home_team_id !== undefined ? Number(home_team_id) : match.home_team_id;
+    const newAway = away_team_id !== undefined ? Number(away_team_id) : match.away_team_id;
+
+    if (newHome === newAway) {
+      return res.status(400).json({ error: 'El equipo local y visitante no pueden ser el mismo' });
+    }
+
+    // Si cambian los equipos, eliminar pronósticos asociados (ya no son válidos)
+    const teamsChanged = newHome !== match.home_team_id || newAway !== match.away_team_id;
+    if (teamsChanged) {
+      const predictions = await Prediction.findAll({ where: { match_id: match.id } });
+      const predictionIds = predictions.map((p) => p.id);
+      if (predictionIds.length > 0) {
+        await Score.destroy({ where: { prediction_id: predictionIds } });
+        await Prediction.destroy({ where: { match_id: match.id } });
+      }
+    }
+
+    match.home_team_id = newHome;
+    match.away_team_id = newAway;
+    if (match_date !== undefined) match.match_date = match_date;
+    await match.save();
+
+    // Recargar con asociaciones de equipos
+    const { Team } = require('../models');
+    const updated = await Match.findByPk(match.id, {
+      include: [
+        { model: Team, as: 'homeTeam', attributes: ['id', 'name'] },
+        { model: Team, as: 'awayTeam', attributes: ['id', 'name'] },
+      ],
+    });
+
+    return res.json({ match: updated, predictions_deleted: teamsChanged });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// DELETE /api/matches/:id  (admin — elimina partido programado)
+const deleteMatch = async (req, res) => {
+  try {
+    const match = await Match.findByPk(req.params.id);
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+    if (match.status === 'played') {
+      return res.status(400).json({ error: 'No se puede eliminar un partido ya jugado' });
+    }
+
+    // Eliminar scores, luego predicciones, luego el partido
+    const predictions = await Prediction.findAll({ where: { match_id: match.id } });
+    const predictionIds = predictions.map((p) => p.id);
+    if (predictionIds.length > 0) {
+      await Score.destroy({ where: { prediction_id: predictionIds } });
+      await Prediction.destroy({ where: { match_id: match.id } });
+    }
+    await match.destroy();
+
+    return res.json({ message: 'Partido eliminado correctamente' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { create, setResult, resetResult, batchSetResults, updateMatch, deleteMatch };

@@ -834,6 +834,51 @@ Actualmente, tanto los jugadores (pronósticos) como los admins (resultados) deb
 
 ---
 
+#### FUNC-027: Editar y eliminar partidos de fechas abiertas (Admin)
+
+**Vinculado a**: REQ-002
+
+**Como** administrador de la penca,
+**quiero** poder editar los datos de un partido (equipos y fecha/hora) o eliminarlo,
+**para** corregir errores de carga sin tener que recrear toda la fecha.
+
+**Condiciones**:
+- Solo partidos en estado `scheduled` (no jugados) pueden editarse o eliminarse.
+- Solo usuarios con rol `admin` pueden realizar estas operaciones.
+- Al eliminar un partido, se eliminan también los pronósticos asociados (cascade).
+- Al editar equipos, se valida que local y visitante no sean el mismo equipo.
+- La fecha/hora es opcional (puede dejarse vacía o actualizarse).
+
+##### FUNC-027a: Editar un partido
+
+**Endpoint**: `PUT /api/matches/:id`
+**Payload**: `{ home_team_id?, away_team_id?, match_date? }`
+
+**Criterios de aceptación**:
+- Admin puede cambiar equipo local, visitante y/o fecha del partido.
+- Si el partido ya fue jugado (`status === 'played'`), retorna error 400.
+- Si cambian los equipos, se eliminan los pronósticos existentes (ya no aplican).
+- Si solo cambia la fecha, los pronósticos se mantienen.
+- Retorna el partido actualizado con los equipos populados.
+
+##### FUNC-027b: Eliminar un partido
+
+**Endpoint**: `DELETE /api/matches/:id`
+
+**Criterios de aceptación**:
+- Admin puede eliminar un partido que aún no fue jugado.
+- Si el partido ya fue jugado, retorna error 400.
+- Se eliminan en cascada: pronósticos y scores asociados.
+- Retorna confirmación con el ID del partido eliminado.
+
+**UI (AdminPage → FixturesTab)**:
+- Cada partido programado muestra botones de "Editar" (lápiz) y "Eliminar" (basura).
+- Al hacer click en "Editar", se expande un formulario inline con selects de equipos y datetime-local.
+- Al hacer click en "Eliminar", se muestra confirmación antes de proceder.
+- Partidos ya jugados no muestran botones de edición (solo lectura).
+
+---
+
 ## 5. Requerimientos No Funcionales
 
 ### 5.1 Rendimiento
@@ -1925,6 +1970,7 @@ npm run db:seed
 
 | Versión | Fecha | Cambios |
 | :--- | :--- | :--- |
+| **1.3** | 21/03/2026 | Agregada **FUNC-027** (Editar y eliminar partidos de fechas abiertas). Incluye **FUNC-027a** (Editar partido) y **FUNC-027b** (Eliminar partido). Nuevos endpoints: `PUT /api/matches/:id` y `DELETE /api/matches/:id`. Total: **27 requerimientos funcionales**. |
 | **1.2** | 21/03/2026 | Agregada **FUNC-026** (Guardar todos los pronósticos/resultados de una vez). Incluye dos sub-funcionalidades: **FUNC-026a** (Guardar todos los pronósticos pendientes) y **FUNC-026b** (Guardar todos los resultados pendientes). Nuevos endpoints: `POST /api/predictions/batch` y `POST /api/matches/results/batch`. Total: **26 requerimientos funcionales**. |
 | **1.1** | 21/03/2026 | Agregadas 5 funcionalidades faltantes del análisis de user stories: **FUNC-002** (Regenerar código de invitación), **FUNC-006** (Ver mis pencas), **FUNC-007** (Cerrar sesión), **FUNC-012** (Ver calendario completo del torneo). Expandida **FUNC-001** (Crear penca con proceso completo). Renumeración de FUNC-003 a FUNC-025 para mantener orden lógico. Total: **25 requerimientos funcionales** cubriendo todas las 23 user stories. |
 | **1.0** | 21/03/2026 | Versión inicial completa del PRD. Incluye todas las funcionalidades implementadas más nueva funcionalidad de bloqueo automático por fecha/hora de partido (FUNC-013). |

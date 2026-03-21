@@ -186,6 +186,7 @@ function FixturesTab({ tournamentId }) {
   const [teams, setTeams] = useState([]);
   const [form, setForm] = useState({ number: '', name: '' });
   const [matchForm, setMatchForm] = useState({ fixture_id: '', home_team_id: '', away_team_id: '', match_date: '' });
+  const [editingMatch, setEditingMatch] = useState(null); // { id, home_team_id, away_team_id, match_date }
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -229,6 +230,37 @@ function FixturesTab({ tournamentId }) {
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al agregar partido');
+    }
+  };
+
+  const handleEditMatch = async (e) => {
+    e.preventDefault();
+    if (editingMatch.home_team_id === editingMatch.away_team_id) {
+      setError('El equipo local y visitante no pueden ser el mismo');
+      return;
+    }
+    setError('');
+    try {
+      await api.put(`/matches/${editingMatch.id}`, {
+        home_team_id: Number(editingMatch.home_team_id),
+        away_team_id: Number(editingMatch.away_team_id),
+        ...(editingMatch.match_date ? { match_date: new Date(editingMatch.match_date).toISOString() } : {}),
+      });
+      setEditingMatch(null);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al editar partido');
+    }
+  };
+
+  const handleDeleteMatch = async (matchId) => {
+    if (!window.confirm('¿Eliminar este partido? Se borrarán los pronósticos asociados.')) return;
+    setError('');
+    try {
+      await api.delete(`/matches/${matchId}`);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al eliminar partido');
     }
   };
 
@@ -290,6 +322,37 @@ function FixturesTab({ tournamentId }) {
             <div className="divide-y">
               {fixture.Matches.map((m) => {
                 const fmtDate = m.match_date ? new Date(m.match_date).toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + new Date(m.match_date).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : null;
+                const isEditing = editingMatch?.id === m.id;
+
+                if (isEditing) {
+                  return (
+                    <form key={m.id} onSubmit={handleEditMatch} className="px-4 py-2 bg-yellow-50 flex gap-2 flex-wrap items-end">
+                      <div className="flex-1 min-w-[100px]">
+                        <label className="text-xs text-gray-500">Local</label>
+                        <select value={editingMatch.home_team_id} onChange={(e) => setEditingMatch((f) => ({ ...f, home_team_id: e.target.value }))}
+                          className="w-full border rounded-lg px-2 py-1 text-sm" required>
+                          {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex-1 min-w-[100px]">
+                        <label className="text-xs text-gray-500">Visitante</label>
+                        <select value={editingMatch.away_team_id} onChange={(e) => setEditingMatch((f) => ({ ...f, away_team_id: e.target.value }))}
+                          className="w-full border rounded-lg px-2 py-1 text-sm" required>
+                          {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex-1 min-w-[130px]">
+                        <label className="text-xs text-gray-500">Fecha y hora</label>
+                        <input type="datetime-local" value={editingMatch.match_date}
+                          onChange={(e) => setEditingMatch((f) => ({ ...f, match_date: e.target.value }))}
+                          className="w-full border rounded-lg px-2 py-1 text-sm" />
+                      </div>
+                      <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-semibold">Guardar</button>
+                      <button type="button" onClick={() => setEditingMatch(null)} className="bg-gray-300 text-gray-700 px-3 py-1 rounded-lg text-sm">Cancelar</button>
+                    </form>
+                  );
+                }
+
                 return (
                   <div key={m.id} className="px-4 py-2 flex items-center justify-between text-sm">
                     <span className="flex-1 text-right pr-2 font-medium">{m.homeTeam?.name}</span>
@@ -300,6 +363,15 @@ function FixturesTab({ tournamentId }) {
                       {fmtDate && <span className="text-[10px] text-gray-400 mt-0.5">🕐 {fmtDate}</span>}
                     </div>
                     <span className="flex-1 pl-2 font-medium">{m.awayTeam?.name}</span>
+                    {m.status === 'scheduled' && (
+                      <div className="flex gap-1 ml-2">
+                        <button onClick={() => {
+                          const localDate = m.match_date ? new Date(m.match_date).toISOString().slice(0, 16) : '';
+                          setEditingMatch({ id: m.id, home_team_id: String(m.home_team_id), away_team_id: String(m.away_team_id), match_date: localDate });
+                        }} className="text-blue-500 hover:text-blue-700 text-xs" title="Editar">✏️</button>
+                        <button onClick={() => handleDeleteMatch(m.id)} className="text-red-400 hover:text-red-600 text-xs" title="Eliminar">🗑️</button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

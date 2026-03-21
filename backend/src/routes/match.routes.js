@@ -30,4 +30,15 @@ router.put('/:id/result', isAdmin, [
 
 router.delete('/:id/result', isAdmin, ctrl.resetResult);
 
+// FUNC-027a: Editar un partido programado
+router.put('/:id', isAdmin, [
+  body('home_team_id').optional().isInt().withMessage('Equipo local inválido'),
+  body('away_team_id').optional().isInt().withMessage('Equipo visitante inválido'),
+  body('match_date').optional().isISO8601().withMessage('Fecha inválida'),
+  validate,
+], ctrl.updateMatch);
+
+// FUNC-027b: Eliminar un partido programado
+router.delete('/:id', isAdmin, ctrl.deleteMatch);
+
 module.exports = router;
