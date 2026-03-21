@@ -52,11 +52,35 @@ npm run db:reset          # todo desde cero
 
 ## Tests
 
+### Tests Unitarios (Backend)
+
+```bash
+cd backend
+npm test              # ejecutar todos los tests unitarios
+npm run test:watch    # modo watch para desarrollo
+```
+
+Los tests unitarios utilizan Mocha + Chai + Sinon + Supertest y cubren:
+- Controladores de autenticación (getMyPencas, logout)
+- Controladores de pencas (regenerateCode)
+- Controladores de fixtures (getCalendar)
+
+### Tests E2E (Serenity BDD)
+
 ```bash
 cd tests
 npm install
 npm run wdio
 ```
+
+Los tests E2E utilizan Serenity BDD + WebDriverIO con el patrón Screenplay y cubren:
+- Registro y autenticación
+- Acceso a múltiples pencas
+- Regeneración de códigos de invitación
+- Visualización del calendario
+- Cierre de sesión
+- Predicciones y scoring
+- Chat en tiempo real
 
 ## Sistema de puntuación
 

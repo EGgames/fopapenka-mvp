@@ -99,4 +99,93 @@ const byMatch = async (req, res) => {
   }
 };
 
-module.exports = { upsert, update, mine, byMatch };
+// POST /api/predictions/batch (FUNC-026a: guardar múltiples pronósticos a la vez)
+const batchUpsert = async (req, res) => {
+  try {
+    const { userId, pencaId } = req.user;
+    const { predictions } = req.body; // Array de { match_id, predicted_home, predicted_away }
+
+    if (!Array.isArray(predictions) || predictions.length === 0) {
+      return res.status(400).json({ error: 'Se requiere array de pronósticos' });
+    }
+
+    // Validar estructura de cada pronóstico
+    for (const pred of predictions) {
+      if (!pred.match_id || pred.predicted_home === undefined || pred.predicted_away === undefined) {
+        return res.status(400).json({ error: 'Cada pronóstico debe tener match_id, predicted_home y predicted_away' });
+      }
+      if (!Number.isInteger(pred.predicted_home) || !Number.isInteger(pred.predicted_away) || pred.predicted_home < 0 || pred.predicted_away < 0) {
+        return res.status(400).json({ error: 'Los goles deben ser enteros no negativos' });
+      }
+    }
+
+    // Obtener todos los partidos de una vez
+    const matchIds = predictions.map(p => p.match_id);
+    const matches = await Match.findAll({ where: { id: matchIds } });
+    
+    if (matches.length !== matchIds.length) {
+      return res.status(404).json({ error: 'Algunos partidos no existen' });
+    }
+
+    // Verificar que ningún partido esté jugado
+    const playedMatches = matches.filter(m => m.status === 'played');
+    if (playedMatches.length > 0) {
+      return res.status(400).json({ 
+        error: 'No se pueden guardar pronósticos de partidos ya jugados',
+        played_match_ids: playedMatches.map(m => m.id)
+      });
+    }
+
+    // Obtener pronósticos existentes
+    const existingPredictions = await Prediction.findAll({
+      where: { 
+        user_id: userId, 
+        match_id: matchIds, 
+        penca_id: pencaId 
+      }
+    });
+
+    const existingPredMap = {};
+    existingPredictions.forEach(p => {
+      existingPredMap[p.match_id] = p;
+    });
+
+    const created = [];
+    const updated = [];
+
+    // Upsert cada pronóstico
+    for (const pred of predictions) {
+      const existing = existingPredMap[pred.match_id];
+      if (existing) {
+        // Actualizar existente
+        existing.predicted_home = pred.predicted_home;
+        existing.predicted_away = pred.predicted_away;
+        await existing.save();
+        updated.push(existing);
+      } else {
+        // Crear nuevo
+        const newPred = await Prediction.create({
+          user_id: userId,
+          match_id: pred.match_id,
+          penca_id: pencaId,
+          predicted_home: pred.predicted_home,
+          predicted_away: pred.predicted_away
+        });
+        created.push(newPred);
+      }
+    }
+
+    return res.json({ 
+      success: true,
+      saved: predictions.length,
+      created: created.length,
+      updated: updated.length,
+      message: `${predictions.length} pronóstico${predictions.length !== 1 ? 's' : ''} guardado${predictions.length !== 1 ? 's' : ''} exitosamente`
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { upsert, update, mine, byMatch, batchUpsert };

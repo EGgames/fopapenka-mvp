@@ -80,4 +80,53 @@ const me = async (req, res) => {
   }
 };
 
-module.exports = { register, login, me };
+// GET /api/auth/me/pencas — FUNC-006: Ver mis pencas
+const getMyPencas = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    
+    const memberships = await PencaMembership.findAll({
+      where: { user_id: userId, status: 'active' },
+      include: [
+        { 
+          model: Penca, 
+          attributes: ['id', 'name', 'invite_code', 'created_at'],
+          where: { status: 'active' },
+          required: true
+        }
+      ],
+      order: [['updated_at', 'DESC']], // Ordenar por último acceso
+    });
+
+    const pencas = memberships.map(m => ({
+      id: m.Penca.id,
+      name: m.Penca.name,
+      invite_code: m.Penca.invite_code,
+      role: m.role,
+      joined_at: m.created_at,
+      last_access: m.updated_at,
+    }));
+
+    return res.json({ pencas });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/auth/logout — FUNC-007: Cerrar sesión
+// Nota: Con JWT stateless, el logout es principalmente del lado del cliente
+// Este endpoint es opcional para tracking/auditoría
+const logout = async (req, res) => {
+  try {
+    const { userId, pencaId } = req.user;
+    
+    // Opcional: Registrar logout en logs de auditoría
+    // await AuditLog.create({ user_id: userId, penca_id: pencaId, action: 'logout' });
+    
+    return res.json({ message: 'Sesión cerrada exitosamente' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { register, login, me, getMyPencas, logout };

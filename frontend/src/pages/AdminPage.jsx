@@ -185,7 +185,7 @@ function FixturesTab({ tournamentId }) {
   const [fixtures, setFixtures] = useState([]);
   const [teams, setTeams] = useState([]);
   const [form, setForm] = useState({ number: '', name: '' });
-  const [matchForm, setMatchForm] = useState({ fixture_id: '', home_team_id: '', away_team_id: '' });
+  const [matchForm, setMatchForm] = useState({ fixture_id: '', home_team_id: '', away_team_id: '', match_date: '' });
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -223,8 +223,9 @@ function FixturesTab({ tournamentId }) {
       await api.post(`/matches/fixture/${matchForm.fixture_id}`, {
         home_team_id: Number(matchForm.home_team_id),
         away_team_id: Number(matchForm.away_team_id),
+        ...(matchForm.match_date ? { match_date: new Date(matchForm.match_date).toISOString() } : {}),
       });
-      setMatchForm((f) => ({ ...f, home_team_id: '', away_team_id: '' }));
+      setMatchForm((f) => ({ ...f, home_team_id: '', away_team_id: '', match_date: '' }));
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al agregar partido');
@@ -267,6 +268,12 @@ function FixturesTab({ tournamentId }) {
               {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
+          <div className="flex-1 min-w-[140px]">
+            <label className="text-xs text-gray-500">Fecha y hora</label>
+            <input type="datetime-local" value={matchForm.match_date}
+              onChange={(e) => setMatchForm((f) => ({ ...f, match_date: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2" />
+          </div>
           <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">Agregar partido</button>
         </form>
       )}
@@ -281,14 +288,21 @@ function FixturesTab({ tournamentId }) {
           </div>
           {fixture.Matches?.length > 0 ? (
             <div className="divide-y">
-              {fixture.Matches.map((m) => (
+              {fixture.Matches.map((m) => {
+                const fmtDate = m.match_date ? new Date(m.match_date).toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + new Date(m.match_date).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : null;
+                return (
                 <div key={m.id} className="px-4 py-2 flex items-center justify-between text-sm">
                   <span className="flex-1 text-right pr-2 font-medium">{m.homeTeam?.name}</span>
-                  <span className={`px-3 py-1 rounded text-xs font-bold ${m.status === 'played' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {m.status === 'played' ? `${m.home_score} - ${m.away_score}` : 'vs'}
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span className={`px-3 py-1 rounded text-xs font-bold ${m.status === 'played' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {m.status === 'played' ? `${m.home_score} - ${m.away_score}` : 'vs'}
+                    </span>
+                    {fmtDate && <span className="text-[10px] text-gray-400 mt-0.5">🕐 {fmtDate}</span>}
+                  </div>
                   <span className="flex-1 pl-2 font-medium">{m.awayTeam?.name}</span>
                 </div>
+                );
+              }
               ))}
             </div>
           ) : (
@@ -305,7 +319,9 @@ function ResultsTab({ tournamentId }) {
   const [fixtures, setFixtures] = useState([]);
   const [selectedFixture, setSelectedFixture] = useState(null);
   const [saving, setSaving] = useState(null);
+  const [savingAll, setSavingAll] = useState(false);
   const [error, setError] = useState('');
+  const [batchMessage, setBatchMessage] = useState('');
 
   const load = useCallback(() => {
     api.get(`/fixtures/tournament/${tournamentId}`).then(({ data }) => {
@@ -315,7 +331,7 @@ function ResultsTab({ tournamentId }) {
         setSelectedFixture(pending?.id || data.fixtures[data.fixtures.length - 1]?.id);
       }
     });
-  }, [tournamentId]);
+  }, [tournamentId, selectedFixture]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -332,7 +348,65 @@ function ResultsTab({ tournamentId }) {
     }
   };
 
+  // FUNC-026b: Guardar todos los resultados pendientes
+  const handleSaveAllResults = async () => {
+    setBatchMessage('');
+    setError('');
+    setSavingAll(true);
+    
+    try {
+      const currentFixture = fixtures.find((f) => f.id === selectedFixture);
+      if (!currentFixture || !currentFixture.Matches) {
+        setBatchMessage('ℹ️ No hay partidos en esta fecha');
+        return;
+      }
+
+      // Recopilar todos los resultados con valores completos
+      const pendingResults = [];
+      
+      currentFixture.Matches.forEach(match => {
+        const matchRow = document.querySelector(`[data-match-id="${match.id}"]`);
+        if (matchRow) {
+          const homeInput = matchRow.querySelector('.home-score-input');
+          const awayInput = matchRow.querySelector('.away-score-input');
+          
+          if (homeInput && awayInput && homeInput.value !== '' && awayInput.value !== '') {
+            pendingResults.push({
+              match_id: match.id,
+              home_score: Number(homeInput.value),
+              away_score: Number(awayInput.value)
+            });
+          }
+        }
+      });
+
+      if (pendingResults.length === 0) {
+        setBatchMessage('ℹ️ No hay resultados completos para cargar');
+        return;
+      }
+
+      // Enviar todos los resultados en una sola llamada
+      const response = await api.post('/matches/results/batch', { results: pendingResults });
+      
+      setBatchMessage(`✅ ${response.data.saved} resultado${response.data.saved !== 1 ? 's' : ''} cargado${response.data.saved !== 1 ? 's' : ''}. ${response.data.predictions_updated} pronóstico${response.data.predictions_updated !== 1 ? 's' : ''} recalculado${response.data.predictions_updated !== 1 ? 's' : ''}.`);
+      
+      // Recargar datos
+      load();
+      
+      // Limpiar mensaje después de 5 segundos
+      setTimeout(() => setBatchMessage(''), 5000);
+      
+    } catch (err) {
+      setBatchMessage(`❌ ${err.response?.data?.error || 'Error al cargar resultados'}`);
+    } finally {
+      setSavingAll(false);
+    }
+  };
+
   const currentFixture = fixtures.find((f) => f.id === selectedFixture);
+  const hasPendingResults = currentFixture?.Matches?.some(m => 
+    m.home_score === null || m.away_score === null
+  );
 
   return (
     <div className="space-y-4">
@@ -353,6 +427,24 @@ function ResultsTab({ tournamentId }) {
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
+      {/* FUNC-026b: Botón "Guardar todos los resultados" superior */}
+      {hasPendingResults && currentFixture?.Matches?.length > 0 && (
+        <div>
+          <button 
+            onClick={handleSaveAllResults}
+            disabled={savingAll}
+            data-testid="save-all-results-top"
+            className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+            {savingAll ? '⏳ Guardando todos los resultados...' : '💾 Guardar todos los resultados'}
+          </button>
+          {batchMessage && (
+            <div className={`mt-2 px-4 py-2 rounded-lg text-sm ${batchMessage.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {batchMessage}
+            </div>
+          )}
+        </div>
+      )}
+
       {currentFixture?.Matches?.map((match) => (
         <ResultMatchCard key={match.id} match={match} saving={saving === match.id}
           onSave={(h, a) => handleSetResult(match.id, h, a)} />
@@ -360,6 +452,24 @@ function ResultsTab({ tournamentId }) {
 
       {currentFixture && !currentFixture.Matches?.length && (
         <p className="text-gray-400 text-center py-6 text-sm">Esta fecha no tiene partidos cargados.</p>
+      )}
+
+      {/* FUNC-026b: Botón "Guardar todos los resultados" inferior */}
+      {hasPendingResults && currentFixture?.Matches?.length > 0 && (
+        <div className="mt-4">
+          <button 
+            onClick={handleSaveAllResults}
+            disabled={savingAll}
+            data-testid="save-all-results-bottom"
+            className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+            {savingAll ? '⏳ Guardando todos los resultados...' : '💾 Guardar todos los resultados'}
+          </button>
+          {batchMessage && (
+            <div className={`mt-2 px-4 py-2 rounded-lg text-sm ${batchMessage.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {batchMessage}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -370,16 +480,21 @@ function ResultMatchCard({ match, saving, onSave }) {
   const [a, setA] = useState(match.away_score ?? '');
   const played = match.status === 'played';
 
+  const fmtDate = match.match_date ? new Date(match.match_date).toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + new Date(match.match_date).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : null;
+
   return (
-    <div className={`bg-white border rounded-xl p-4 shadow-sm ${played ? 'border-green-200' : ''}`}>
+    <div data-match-id={match.id} className={`bg-white border rounded-xl p-4 shadow-sm ${played ? 'border-green-200' : ''}`}>
+      {fmtDate && (
+        <p className="text-xs text-gray-400 text-center mb-2">🕐 {fmtDate}</p>
+      )}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="font-medium text-sm flex-1 text-right">{match.homeTeam?.name}</span>
         <div className="flex items-center gap-2">
           <input type="number" min="0" value={h} onChange={(e) => setH(e.target.value)}
-            className="w-14 border rounded-lg text-center py-1 text-lg font-bold" />
+            className="w-14 border rounded-lg text-center py-1 text-lg font-bold home-score-input" />
           <span className="text-gray-400 font-bold">-</span>
           <input type="number" min="0" value={a} onChange={(e) => setA(e.target.value)}
-            className="w-14 border rounded-lg text-center py-1 text-lg font-bold" />
+            className="w-14 border rounded-lg text-center py-1 text-lg font-bold away-score-input" />
         </div>
         <span className="font-medium text-sm flex-1">{match.awayTeam?.name}</span>
         <button onClick={() => onSave(h, a)} disabled={saving || h === '' || a === ''}

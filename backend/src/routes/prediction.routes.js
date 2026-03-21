@@ -14,6 +14,12 @@ router.post('/', [
   validate,
 ], ctrl.upsert);
 
+// FUNC-026a: Guardar múltiples pronósticos a la vez
+router.post('/batch', [
+  body('predictions').isArray({ min: 1 }).withMessage('Se requiere array de pronósticos'),
+  validate,
+], ctrl.batchUpsert);
+
 router.get('/mine', ctrl.mine);
 
 router.put('/match/:matchId', [

@@ -69,4 +69,95 @@ const resetResult = async (req, res) => {
   }
 };
 
-module.exports = { create, setResult, resetResult };
+// POST /api/matches/results/batch (FUNC-026b: cargar múltiples resultados a la vez)
+const batchSetResults = async (req, res) => {
+  const { sequelize } = require('../models');
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { results } = req.body; // Array de { match_id, home_score, away_score }
+
+    if (!Array.isArray(results) || results.length === 0) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Se requiere array de resultados' });
+    }
+
+    // Validar estructura de cada resultado
+    for (const result of results) {
+      if (!result.match_id || result.home_score === undefined || result.away_score === undefined) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Cada resultado debe tener match_id, home_score y away_score' });
+      }
+      if (!Number.isInteger(result.home_score) || !Number.isInteger(result.away_score) || result.home_score < 0 || result.away_score < 0) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Los goles deben ser enteros no negativos' });
+      }
+    }
+
+    // Obtener todos los partidos de una vez
+    const matchIds = results.map(r => r.match_id);
+    const matches = await Match.findAll({ 
+      where: { id: matchIds },
+      transaction
+    });
+    
+    if (matches.length !== matchIds.length) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Algunos partidos no existen' });
+    }
+
+    // Crear mapa de partidos
+    const matchMap = {};
+    matches.forEach(m => {
+      matchMap[m.id] = m;
+    });
+
+    let totalPredictionsUpdated = 0;
+
+    // Actualizar cada partido y recalcular pronósticos
+    for (const result of results) {
+      const match = matchMap[result.match_id];
+      
+      match.home_score = result.home_score;
+      match.away_score = result.away_score;
+      match.status = 'played';
+      await match.save({ transaction });
+
+      // Recalcular puntos de todos los pronósticos de este partido
+      const predictions = await Prediction.findAll({ 
+        where: { match_id: match.id },
+        transaction
+      });
+
+      for (const prediction of predictions) {
+        const points = calculatePoints({
+          predictedHome: prediction.predicted_home,
+          predictedAway: prediction.predicted_away,
+          actualHome: result.home_score,
+          actualAway: result.away_score,
+        });
+        await Score.upsert(
+          { prediction_id: prediction.id, points },
+          { transaction }
+        );
+      }
+
+      totalPredictionsUpdated += predictions.length;
+    }
+
+    await transaction.commit();
+
+    return res.json({ 
+      success: true,
+      saved: results.length,
+      predictions_updated: totalPredictionsUpdated,
+      message: `${results.length} resultado${results.length !== 1 ? 's' : ''} cargado${results.length !== 1 ? 's' : ''}. ${totalPredictionsUpdated} pronóstico${totalPredictionsUpdated !== 1 ? 's' : ''} recalculado${totalPredictionsUpdated !== 1 ? 's' : ''}.`
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { create, setResult, resetResult, batchSetResults };

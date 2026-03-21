@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { body } = require('express-validator');
-const { register, login, me } = require('../controllers/auth.controller');
+const { register, login, me, getMyPencas, logout } = require('../controllers/auth.controller');
 const { auth } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 
@@ -21,5 +21,11 @@ router.post('/login', [
 ], login);
 
 router.get('/me', auth, me);
+
+// FUNC-006: Ver mis pencas
+router.get('/me/pencas', auth, getMyPencas);
+
+// FUNC-007: Cerrar sesión
+router.post('/logout', auth, logout);
 
 module.exports = router;

@@ -16,6 +16,12 @@ router.post('/fixture/:fixtureId', isAdmin, [
   validate,
 ], ctrl.create);
 
+// FUNC-026b: Cargar múltiples resultados a la vez
+router.post('/results/batch', isAdmin, [
+  body('results').isArray({ min: 1 }).withMessage('Se requiere array de resultados'),
+  validate,
+], ctrl.batchSetResults);
+
 router.put('/:id/result', isAdmin, [
   body('home_score').isInt({ min: 0 }).withMessage('Goles local inválidos'),
   body('away_score').isInt({ min: 0 }).withMessage('Goles visitante inválidos'),

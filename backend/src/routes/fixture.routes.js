@@ -10,6 +10,9 @@ router.use(auth);
 
 router.get('/tournament/:tournamentId', ctrl.list);
 
+// FUNC-012: Ver calendario completo del torneo activo
+router.get('/calendar', ctrl.getCalendar);
+
 router.post('/tournament/:tournamentId', isAdmin, [
   body('number').isInt({ min: 1 }).withMessage('Número de fecha inválido'),
   body('name').trim().notEmpty().withMessage('Nombre requerido'),

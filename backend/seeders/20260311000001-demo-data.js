@@ -117,22 +117,23 @@ module.exports = {
     // Fecha 1 — jugada (con resultados)
     // Fecha 2 — jugada (con resultados)
     // Fecha 3 — programada (sin resultados)
+    // Fechas de partidos: Fecha 1 fue el 1/3, Fecha 2 el 8/3, Fecha 3 el 22/3
     const matchesData = [
       // Fecha 1 — jugada
-      { fixture: 1, home: 'River Plate',   away: 'Boca Juniors',  hs: 2, as_: 1, status: 'played' },
-      { fixture: 1, home: 'Racing Club',   away: 'Independiente', hs: 1, as_: 1, status: 'played' },
-      { fixture: 1, home: 'San Lorenzo',   away: 'Huracán',       hs: 0, as_: 2, status: 'played' },
-      { fixture: 1, home: 'Vélez',         away: 'Estudiantes',   hs: 3, as_: 0, status: 'played' },
+      { fixture: 1, home: 'River Plate',   away: 'Boca Juniors',  hs: 2, as_: 1, status: 'played', date: '2026-03-01T17:00:00Z' },
+      { fixture: 1, home: 'Racing Club',   away: 'Independiente', hs: 1, as_: 1, status: 'played', date: '2026-03-01T19:15:00Z' },
+      { fixture: 1, home: 'San Lorenzo',   away: 'Huracán',       hs: 0, as_: 2, status: 'played', date: '2026-03-01T21:30:00Z' },
+      { fixture: 1, home: 'Vélez',         away: 'Estudiantes',   hs: 3, as_: 0, status: 'played', date: '2026-03-02T15:00:00Z' },
       // Fecha 2 — jugada
-      { fixture: 2, home: 'Boca Juniors',  away: 'Racing Club',   hs: 1, as_: 0, status: 'played' },
-      { fixture: 2, home: 'Independiente', away: 'River Plate',   hs: 0, as_: 3, status: 'played' },
-      { fixture: 2, home: 'Huracán',       away: 'Vélez',         hs: 2, as_: 2, status: 'played' },
-      { fixture: 2, home: 'Estudiantes',   away: 'San Lorenzo',   hs: 1, as_: 1, status: 'played' },
+      { fixture: 2, home: 'Boca Juniors',  away: 'Racing Club',   hs: 1, as_: 0, status: 'played', date: '2026-03-08T17:00:00Z' },
+      { fixture: 2, home: 'Independiente', away: 'River Plate',   hs: 0, as_: 3, status: 'played', date: '2026-03-08T19:15:00Z' },
+      { fixture: 2, home: 'Huracán',       away: 'Vélez',         hs: 2, as_: 2, status: 'played', date: '2026-03-08T21:30:00Z' },
+      { fixture: 2, home: 'Estudiantes',   away: 'San Lorenzo',   hs: 1, as_: 1, status: 'played', date: '2026-03-09T15:00:00Z' },
       // Fecha 3 — programada
-      { fixture: 3, home: 'River Plate',   away: 'Racing Club',   hs: null, as_: null, status: 'scheduled' },
-      { fixture: 3, home: 'Boca Juniors',  away: 'Independiente', hs: null, as_: null, status: 'scheduled' },
-      { fixture: 3, home: 'Vélez',         away: 'San Lorenzo',   hs: null, as_: null, status: 'scheduled' },
-      { fixture: 3, home: 'Estudiantes',   away: 'Huracán',       hs: null, as_: null, status: 'scheduled' },
+      { fixture: 3, home: 'River Plate',   away: 'Racing Club',   hs: null, as_: null, status: 'scheduled', date: '2026-03-22T17:00:00Z' },
+      { fixture: 3, home: 'Boca Juniors',  away: 'Independiente', hs: null, as_: null, status: 'scheduled', date: '2026-03-22T19:15:00Z' },
+      { fixture: 3, home: 'Vélez',         away: 'San Lorenzo',   hs: null, as_: null, status: 'scheduled', date: '2026-03-22T21:30:00Z' },
+      { fixture: 3, home: 'Estudiantes',   away: 'Huracán',       hs: null, as_: null, status: 'scheduled', date: '2026-03-23T15:00:00Z' },
     ];
 
     await queryInterface.bulkInsert('matches',
@@ -143,7 +144,7 @@ module.exports = {
         home_score:   m.hs,
         away_score:   m.as_,
         status:       m.status,
-        match_date:   null,
+        match_date:   m.date ? new Date(m.date) : null,
         created_at:   new Date(),
         updated_at:   new Date(),
       }))
