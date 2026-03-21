@@ -1,5 +1,13 @@
 const { Prediction, Score, Match, Team, Fixture, User } = require('../models');
 
+// Verifica si la hora de inicio del partido ya pasó (GMT-3)
+const isMatchStarted = (match) => {
+  if (!match.match_date) return false;
+  const now = new Date();
+  const matchStart = new Date(match.match_date);
+  return now >= matchStart;
+};
+
 // POST /api/predictions  (crear o actualizar pronóstico)
 const upsert = async (req, res) => {
   try {
@@ -9,6 +17,7 @@ const upsert = async (req, res) => {
     const match = await Match.findByPk(match_id);
     if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
     if (match.status === 'played') return res.status(400).json({ error: 'No se puede pronosticar un partido ya jugado' });
+    if (isMatchStarted(match)) return res.status(400).json({ error: 'No se puede pronosticar, el partido ya comenzó' });
 
     const existing = await Prediction.findOne({ where: { user_id: userId, match_id, penca_id: pencaId } });
     let prediction;
@@ -63,6 +72,7 @@ const update = async (req, res) => {
     const match = await Match.findByPk(matchId);
     if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
     if (match.status === 'played') return res.status(400).json({ error: 'No se puede pronosticar un partido ya jugado' });
+    if (isMatchStarted(match)) return res.status(400).json({ error: 'No se puede pronosticar, el partido ya comenzó' });
 
     const prediction = await Prediction.findOne({ where: { user_id: userId, match_id: matchId, penca_id: pencaId } });
     if (!prediction) return res.status(404).json({ error: 'Pronóstico no encontrado' });
@@ -127,12 +137,20 @@ const batchUpsert = async (req, res) => {
       return res.status(404).json({ error: 'Algunos partidos no existen' });
     }
 
-    // Verificar que ningún partido esté jugado
+    // Verificar que ningún partido esté jugado o ya haya comenzado
     const playedMatches = matches.filter(m => m.status === 'played');
     if (playedMatches.length > 0) {
       return res.status(400).json({ 
         error: 'No se pueden guardar pronósticos de partidos ya jugados',
         played_match_ids: playedMatches.map(m => m.id)
+      });
+    }
+
+    const startedMatches = matches.filter(m => isMatchStarted(m));
+    if (startedMatches.length > 0) {
+      return res.status(400).json({ 
+        error: 'No se pueden guardar pronósticos de partidos que ya comenzaron',
+        started_match_ids: startedMatches.map(m => m.id)
       });
     }
 

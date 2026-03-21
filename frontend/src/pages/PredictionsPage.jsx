@@ -58,8 +58,8 @@ export default function PredictionsPage() {
       // Recorrer todas las fixtures y partidos del estado
       fixtures.forEach(fixture => {
         fixture.Matches?.forEach(match => {
-          // Solo incluir partidos no jugados
-          if (match.status === 'scheduled') {
+          // Solo incluir partidos no jugados y que no hayan comenzado
+          if (match.status === 'scheduled' && !(match.match_date && new Date() >= new Date(match.match_date))) {
             // Buscar valores en el DOM para este partido
             const matchSlug = `${toSlug(match.homeTeam?.name)}-${toSlug(match.awayTeam?.name)}-f${fixture.number}`;
             const matchRow = document.querySelector(`[data-match-id="${matchSlug}"]`);
@@ -109,7 +109,8 @@ export default function PredictionsPage() {
     let count = 0;
     fixtures.forEach(fixture => {
       fixture.Matches?.forEach(match => {
-        if (match.status === 'scheduled' && !predictions[match.id]) {
+        const matchStarted = match.match_date && new Date() >= new Date(match.match_date);
+        if (match.status === 'scheduled' && !matchStarted && !predictions[match.id]) {
           count++;
         }
       });
@@ -122,6 +123,8 @@ export default function PredictionsPage() {
     const [h, setH] = useState(pred?.predicted_home ?? '');
     const [a, setA] = useState(pred?.predicted_away ?? '');
     const played = match.status === 'played';
+    const started = !played && match.match_date && new Date() >= new Date(match.match_date);
+    const locked = played || started;
     const points = pred?.Score?.points;
     const matchSlug = `${toSlug(match.homeTeam?.name)}-${toSlug(match.awayTeam?.name)}-f${fixtureNumber}`;
 
@@ -148,22 +151,32 @@ export default function PredictionsPage() {
         </div>
         <div className="flex items-center gap-1">
           <input type="number" min="0" value={h} onChange={(e) => setH(e.target.value)}
-            disabled={played} className="w-12 border rounded text-center home-goals" />
+            disabled={locked} className="w-12 border rounded text-center home-goals" />
           <span className="text-gray-400">-</span>
           <input type="number" min="0" value={a} onChange={(e) => setA(e.target.value)}
-            disabled={played} className="w-12 border rounded text-center away-goals" />
+            disabled={locked} className="w-12 border rounded text-center away-goals" />
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
           <span className="text-sm font-medium truncate text-right">{match.awayTeam?.name}</span>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-1 sm:mt-0">
-          {!played && (
+          {!locked && (
             <>
               <button onClick={() => handlePredict(match.id, h, a)}
                 disabled={savingMatch === match.id || h === '' || a === ''}
                 className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg save-prediction disabled:opacity-50">
                 {savingMatch === match.id ? '...' : 'Guardar'}
               </button>
+              {pred && (
+                <span data-testid="prediction-badge" className="text-xs font-bold px-2 py-1 rounded-full prediction-saved bg-blue-100 text-blue-700">
+                  {pred.predicted_home} - {pred.predicted_away}
+                </span>
+              )}
+            </>
+          )}
+          {started && (
+            <>
+              <span data-testid="match-locked" className="text-xs text-orange-500 match-locked">🔒 Partido en curso</span>
               {pred && (
                 <span data-testid="prediction-badge" className="text-xs font-bold px-2 py-1 rounded-full prediction-saved bg-blue-100 text-blue-700">
                   {pred.predicted_home} - {pred.predicted_away}
@@ -189,7 +202,7 @@ export default function PredictionsPage() {
   if (loading) return <Layout><div className="max-w-3xl mx-auto py-8 px-4"><p className="text-gray-400">Cargando...</p></div></Layout>;
 
   const hasPendingPredictions = fixtures.some(f => 
-    f.Matches?.some(m => m.status === 'scheduled')
+    f.Matches?.some(m => m.status === 'scheduled' && !(m.match_date && new Date() >= new Date(m.match_date)))
   );
 
   return (
