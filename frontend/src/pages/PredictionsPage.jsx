@@ -10,7 +10,29 @@ export default function PredictionsPage() {
   const [savingAll, setSavingAll] = useState(false);
   const [batchMessage, setBatchMessage] = useState('');
 
+  const [expandedMatch, setExpandedMatch] = useState(null);
+  const [otherPredictions, setOtherPredictions] = useState([]);
+  const [loadingOthers, setLoadingOthers] = useState(false);
+
   const toSlug = (name) => (name || '').toLowerCase().split(' ')[0];
+
+  const handleToggleOthers = async (matchId) => {
+    if (expandedMatch === matchId) {
+      setExpandedMatch(null);
+      setOtherPredictions([]);
+      return;
+    }
+    setLoadingOthers(true);
+    setExpandedMatch(matchId);
+    try {
+      const { data } = await api.get(`/predictions/match/${matchId}`);
+      setOtherPredictions(data.predictions || []);
+    } catch {
+      setOtherPredictions([]);
+    } finally {
+      setLoadingOthers(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -186,15 +208,54 @@ export default function PredictionsPage() {
           )}
           {played && (
             <>
-              <span data-testid="match-locked" className="text-xs text-gray-400 match-locked">No se puede pronosticar un partido ya jugado</span>
+              <span data-testid="match-locked" className="text-xs text-gray-400 match-locked">Resultado: {match.home_score} - {match.away_score}</span>
               {pred && (
                 <span data-testid="prediction-badge" className={`text-xs font-bold px-2 py-1 rounded-full prediction-saved ${points === 3 ? 'bg-green-100 text-green-700' : points === 1 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
                   {pred.predicted_home} - {pred.predicted_away} ({points ?? '-'} pts)
                 </span>
               )}
+              <button onClick={() => handleToggleOthers(match.id)} data-testid="view-others-btn"
+                className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg hover:bg-indigo-100 transition">
+                {expandedMatch === match.id ? '▲ Cerrar' : '👁 Ver pronósticos'}
+              </button>
             </>
           )}
         </div>
+        {/* Tabla comparativa de pronósticos de otros */}
+        {played && expandedMatch === match.id && (
+          <div className="w-full mt-2 border-t pt-2" data-testid="others-predictions">
+            {loadingOthers ? (
+              <p className="text-xs text-gray-400 text-center py-2">Cargando...</p>
+            ) : otherPredictions.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-2">Nadie pronosticó este partido.</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-gray-500 border-b">
+                    <th className="text-left py-1 px-2">Jugador</th>
+                    <th className="text-center py-1 px-2">Pronóstico</th>
+                    <th className="text-center py-1 px-2">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {otherPredictions
+                    .sort((a, b) => (b.Score?.points ?? 0) - (a.Score?.points ?? 0))
+                    .map((op) => (
+                    <tr key={op.id} className="border-b last:border-0">
+                      <td className="py-1 px-2 font-medium">{op.User?.nickname}</td>
+                      <td className="py-1 px-2 text-center">{op.predicted_home} - {op.predicted_away}</td>
+                      <td className="py-1 px-2 text-center">
+                        <span className={`font-bold ${op.Score?.points === 3 ? 'text-green-600' : op.Score?.points === 1 ? 'text-yellow-600' : 'text-red-500'}`}>
+                          {op.Score?.points ?? 0}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
     );
   };

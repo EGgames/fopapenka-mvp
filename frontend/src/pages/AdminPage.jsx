@@ -584,10 +584,19 @@ function ResultMatchCard({ match, saving, onSave }) {
 function MembersTab() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [inviteCode, setInviteCode] = useState('');
+  const [regenerating, setRegenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
-    api.get('/pencas/members').then(({ data }) => setMembers(data.members)).finally(() => setLoading(false));
+    Promise.all([
+      api.get('/pencas/members'),
+      api.get('/pencas/invite-code'),
+    ]).then(([membersRes, codeRes]) => {
+      setMembers(membersRes.data.members);
+      setInviteCode(codeRes.data.invite_code);
+    }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -598,10 +607,48 @@ function MembersTab() {
     load();
   };
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(inviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRegenerate = async () => {
+    if (!confirm('⚠️ El código actual dejará de funcionar. Los usuarios ya registrados NO se verán afectados. ¿Continuar?')) return;
+    setRegenerating(true);
+    try {
+      const { data } = await api.post('/pencas/regenerate-code');
+      setInviteCode(data.invite_code);
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   if (loading) return <p className="text-gray-400 text-center py-6">Cargando...</p>;
 
   return (
-    <div className="bg-white border rounded-xl shadow-sm divide-y">
+    <div className="space-y-4">
+      {/* Código de invitación */}
+      <div className="bg-white border rounded-xl p-5 shadow-sm">
+        <h3 className="font-semibold text-gray-700 mb-3">🔑 Código de invitación</h3>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span data-testid="invite-code" className="text-2xl font-mono font-bold text-green-700 tracking-widest bg-green-50 px-4 py-2 rounded-lg select-all">
+            {inviteCode}
+          </span>
+          <button onClick={handleCopy} data-testid="copy-code-btn"
+            className="text-sm bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition">
+            {copied ? '✅ Copiado' : '📋 Copiar'}
+          </button>
+          <button onClick={handleRegenerate} disabled={regenerating} data-testid="regenerate-code-btn"
+            className="text-sm bg-orange-50 text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-100 disabled:opacity-50 transition">
+            {regenerating ? '⏳ Regenerando...' : '🔄 Regenerar código'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">Compartí este código para que otros se unan a tu penca.</p>
+      </div>
+
+      {/* Lista de miembros */}
+      <div className="bg-white border rounded-xl shadow-sm divide-y">
       {members.map((m) => (
         <div key={m.id} className="flex items-center justify-between px-4 py-3">
           <div>
@@ -625,6 +672,7 @@ function MembersTab() {
       ))}
       <div className="px-4 py-3 text-center text-xs text-gray-400">
         {members.length} miembro{members.length !== 1 ? 's' : ''}
+      </div>
       </div>
     </div>
   );

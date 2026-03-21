@@ -28,6 +28,7 @@ router.post('/', [
   validate,
 ], ctrl.create);
 
+router.get('/invite-code', isAdmin, ctrl.getInviteCode);
 router.post('/regenerate-code', isAdmin, ctrl.regenerateCode);
 
 router.get('/members', isAdmin, ctrl.getMembers);

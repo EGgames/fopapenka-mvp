@@ -119,4 +119,16 @@ const createWithAdmin = async (req, res) => {
   }
 };
 
-module.exports = { create, createWithAdmin, getByCode, regenerateCode, getMembers, updateMemberStatus };
+// GET /api/pencas/invite-code  (admin — obtener código actual)
+const getInviteCode = async (req, res) => {
+  try {
+    const { pencaId } = req.user;
+    const penca = await Penca.findByPk(pencaId, { attributes: ['invite_code'] });
+    if (!penca) return res.status(404).json({ error: 'Penca no encontrada' });
+    return res.json({ invite_code: penca.invite_code });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { create, createWithAdmin, getByCode, regenerateCode, getMembers, updateMemberStatus, getInviteCode };

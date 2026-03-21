@@ -1,7 +1,7 @@
 # PRD: ⚽ Fopapenka — Sistema Multi-Penca de Pronósticos de Fútbol
 
-**Versión:** 1.1 MVP  
-**Fecha:** Marzo 2026  
+**Versión:** 1.5 MVP  
+**Fecha:** Junio 2026  
 **Proyecto:** Fopapenka
 
 ---
@@ -199,6 +199,12 @@ El frontend (React + Socket.io) expone un flujo de: registro → pronóstico con
 - Diálogo de confirmación obligatorio antes de regenerar.
 - Nuevo código cumple mismas reglas de unicidad que FUNC-001.
 - Log de auditoría registra: admin_id, old_code, new_code, timestamp.
+
+**Estado de implementación**: ✅ Completado (v1.5)
+- Backend: `GET /api/pencas/invite-code` (protegido con `isAdmin`).
+- Frontend: Código visible en tab "Jugadores" del panel admin, con botón "📋 Copiar" (copia al portapapeles) y botón "🔄 Regenerar código" con diálogo de confirmación.
+- Tests unitarios: 3 tests en `backend/test/penca.invite-code.test.js`.
+- BDD: `tests/features/admin/invite_code.feature` (5 escenarios).
 
 ---
 
@@ -694,6 +700,12 @@ const calculatePoints = ({ predictedHome, predictedAway, actualHome, actualAway 
 - Endpoint `GET /api/matches/:id/predictions` devuelve 403 si partido no está en estado `jugado`.
 - UI muestra botón "Ver pronósticos" solo en partidos jugados.
 - Tabla es de solo lectura.
+
+**Estado de implementación**: ✅ Completado (v1.5)
+- Backend: `GET /api/predictions/match/:matchId` devuelve pronósticos con User y Score incluidos; retorna 403 si el partido no está en estado `played`.
+- Frontend: Botón "👁 Ver pronósticos" visible solo en partidos jugados (PredictionsPage). Tabla expandible ordenada por puntos (desc) con columnas Jugador | Pronóstico | Pts. Colores: verde (3 pts), amarillo (1 pt), rojo (0 pts).
+- Tests unitarios: 6 tests en `backend/test/prediction.byMatch.test.js`.
+- BDD: `tests/features/predictions/view_others_predictions.feature` (5 escenarios).
 
 ---
 
