@@ -431,6 +431,11 @@ Cada penca debe operar como entidad independiente con su propio:
 - Vista responsive (mobile + desktop).
 - Sin necesidad de autenticación avanzada: solo válido ser miembro de la penca.
 
+**Estado de implementación**: ✅ Completado (v1.5)
+- Backend: `GET /api/fixtures/tournament/:tournamentId` devuelve fixtures con partidos incluyendo campo `match_date`.
+- Frontend: CalendarPage muestra fecha y hora de cada partido debajo de los equipos en formato "📆 lun 23 mar — 20:00 hs" (locale es-UY). Solo se muestra si el partido tiene fecha/hora asignada.
+- BDD: `tests/features/calendar/match_datetime_display.feature`.
+
 ---
 
 ### 4.5 Sistema de Pronósticos

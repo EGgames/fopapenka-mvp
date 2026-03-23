@@ -45,15 +45,31 @@ export default function CalendarPage() {
                 </span>
               </div>
               <div className="space-y-2">
-                {fixture.Matches?.map((match) => (
-                  <div key={match.id} className="bg-white border rounded-lg px-4 py-3 flex items-center justify-between">
-                    <span className="font-medium text-sm flex-1 text-right pr-3">{match.homeTeam?.name}</span>
-                    <span className={`px-3 py-1 rounded text-sm font-bold ${match.status === 'played' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
-                      {match.status === 'played' ? `${match.home_score} - ${match.away_score}` : 'vs'}
-                    </span>
-                    <span className="font-medium text-sm flex-1 pl-3">{match.awayTeam?.name}</span>
+                {fixture.Matches?.map((match) => {
+                  const matchDate = match.match_date ? new Date(match.match_date) : null;
+                  const dateStr = matchDate
+                    ? matchDate.toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'short' })
+                    : null;
+                  const timeStr = matchDate
+                    ? matchDate.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })
+                    : null;
+                  return (
+                  <div key={match.id} className="bg-white border rounded-lg px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm flex-1 text-right pr-3">{match.homeTeam?.name}</span>
+                      <span className={`px-3 py-1 rounded text-sm font-bold ${match.status === 'played' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
+                        {match.status === 'played' ? `${match.home_score} - ${match.away_score}` : 'vs'}
+                      </span>
+                      <span className="font-medium text-sm flex-1 pl-3">{match.awayTeam?.name}</span>
+                    </div>
+                    {matchDate && (
+                      <div className="text-center mt-1">
+                        <span className="text-xs text-gray-400">📆 {dateStr} — {timeStr} hs</span>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
