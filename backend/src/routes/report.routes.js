@@ -10,4 +10,8 @@ router.get('/:id', ctrl.show);
 router.post('/', ctrl.create);
 router.delete('/:id', ctrl.remove);
 
+// Comentarios
+router.post('/:id/comments', ctrl.addComment);
+router.delete('/:id/comments/:commentId', ctrl.removeComment);
+
 module.exports = router;

@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useShallow } from 'zustand/react/shallow';
 
+const formatDate = (d) => {
+  const date = new Date(d);
+  if (isNaN(date)) return '';
+  return date.toLocaleDateString('es-UY', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+};
+
 export default function ReportsPage() {
+  const navigate = useNavigate();
   const { nickname, role } = useAuthStore(useShallow((s) => ({ nickname: s.nickname, role: s.role })));
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +72,8 @@ export default function ReportsPage() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
     if (!window.confirm('¿Eliminar este reporte?')) return;
     try {
       await api.delete(`/reports/${id}`);
@@ -143,7 +155,11 @@ export default function ReportsPage() {
         ) : (
           <div className="space-y-4">
             {reports.map((report) => (
-              <div key={report.id} className="bg-white border rounded-xl shadow-sm overflow-hidden">
+              <div
+                key={report.id}
+                onClick={() => navigate(`/reports/${report.id}`)}
+                className="bg-white border rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md hover:border-green-300 transition-all"
+              >
                 {report.image_url && (
                   <img
                     src={report.image_url}
@@ -157,19 +173,20 @@ export default function ReportsPage() {
                   <p className="text-xs text-gray-400 mb-3">
                     Por <span className="font-semibold text-green-600">{report.User?.nickname ?? 'Anónimo'}</span>
                     {' · '}
-                    {new Date(report.created_at).toLocaleDateString('es-UY', {
-                      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-                    })}
+                    {formatDate(report.createdAt)}
                   </p>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{report.content}</p>
-                  {(report.User?.nickname === nickname || role === 'admin') && (
-                    <button
-                      onClick={() => handleDelete(report.id)}
-                      className="mt-3 text-xs text-red-400 hover:text-red-600 transition"
-                    >
-                      Eliminar
-                    </button>
-                  )}
+                  <p className="text-sm text-gray-600 line-clamp-3">{report.content}</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-gray-400">💬 Ver comentarios</span>
+                    {(report.User?.nickname === nickname || role === 'admin') && (
+                      <button
+                        onClick={(e) => handleDelete(e, report.id)}
+                        className="text-xs text-red-400 hover:text-red-600 transition"
+                      >
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

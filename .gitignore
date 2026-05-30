@@ -47,3 +47,4 @@ tests/target/
 allure-results/
 allure-report/
 .vercel
+.env*

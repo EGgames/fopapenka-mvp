@@ -1,4 +1,4 @@
-const { Report, User } = require('../models');
+const { Report, User, ReportComment } = require('../models');
 
 const getAll = async () => {
   return Report.findAll({
@@ -9,7 +9,14 @@ const getAll = async () => {
 
 const getById = async (id) => {
   const report = await Report.findByPk(id, {
-    include: [{ model: User, attributes: ['id', 'nickname'] }],
+    include: [
+      { model: User, attributes: ['id', 'nickname'] },
+      {
+        model: ReportComment,
+        include: [{ model: User, attributes: ['id', 'nickname'] }],
+        order: [['created_at', 'ASC']],
+      },
+    ],
   });
   if (!report) {
     const err = new Error('Reporte no encontrado');
@@ -43,4 +50,42 @@ const remove = async (id, userId, role) => {
   await report.destroy();
 };
 
-module.exports = { getAll, getById, create, remove };
+const addComment = async (reportId, userId, content) => {
+  if (!content?.trim()) {
+    const err = new Error('El comentario no puede estar vacío');
+    err.status = 400;
+    throw err;
+  }
+  if (content.trim().length > 500) {
+    const err = new Error('El comentario no puede superar 500 caracteres');
+    err.status = 400;
+    throw err;
+  }
+  // Verificar que el reporte existe
+  await getById(reportId);
+  const comment = await ReportComment.create({
+    report_id: reportId,
+    user_id: userId,
+    content: content.trim(),
+  });
+  return ReportComment.findByPk(comment.id, {
+    include: [{ model: User, attributes: ['id', 'nickname'] }],
+  });
+};
+
+const removeComment = async (commentId, userId, role) => {
+  const comment = await ReportComment.findByPk(commentId);
+  if (!comment) {
+    const err = new Error('Comentario no encontrado');
+    err.status = 404;
+    throw err;
+  }
+  if (comment.user_id !== userId && role !== 'admin') {
+    const err = new Error('Sin permiso para eliminar este comentario');
+    err.status = 403;
+    throw err;
+  }
+  await comment.destroy();
+};
+
+module.exports = { getAll, getById, create, remove, addComment, removeComment };
