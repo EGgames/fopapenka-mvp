@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function ReportsPage() {
-  const { nickname, role } = useAuthStore((s) => ({ nickname: s.nickname, role: s.role }));
+  const { nickname, role } = useAuthStore(useShallow((s) => ({ nickname: s.nickname, role: s.role })));
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

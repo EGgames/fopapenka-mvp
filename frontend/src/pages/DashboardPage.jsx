@@ -59,7 +59,6 @@ export default function DashboardPage() {
             { to: '/ranking', label: '🏆 Ranking', desc: 'Tabla de posiciones' },
             { to: '/calendar', label: '📅 Calendario', desc: 'Ver fechas y partidos' },
             { to: '/chat', label: '💬 Chat', desc: 'Charlar con los participantes' },
-            { to: '/reports', label: '📰 Auge Reportes', desc: 'Noticias de la comunidad' },
           ].map((item) => (
             <Link key={item.to} to={item.to}
               className="bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition">
@@ -74,6 +73,11 @@ export default function DashboardPage() {
               <div className="text-sm text-green-100 mt-1">Gestionar torneo, fixtures y resultados</div>
             </Link>
           )}
+          <Link to="/reports"
+            className="bg-blue-600 text-white border rounded-xl p-5 shadow-sm hover:bg-blue-700 transition col-span-2">
+            <div className="text-xl font-bold">📰 Auge Reportes</div>
+            <div className="text-sm text-blue-100 mt-1">Noticias de la comunidad</div>
+          </Link>
         </div>
       </div>
     </Layout>
