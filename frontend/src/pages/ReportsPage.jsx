@@ -34,13 +34,20 @@ export default function ReportsPage() {
     }
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('title', form.title.trim());
-      formData.append('content', form.content.trim());
-      if (imageFile) formData.append('image', imageFile);
+      let image_url = null;
+      if (imageFile) {
+        image_url = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Error al leer la imagen'));
+          reader.readAsDataURL(imageFile);
+        });
+      }
 
-      await api.post('/reports', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      await api.post('/reports', {
+        title: form.title.trim(),
+        content: form.content.trim(),
+        image_url,
       });
       setForm({ title: '', content: '' });
       setImageFile(null);
@@ -97,14 +104,21 @@ export default function ReportsPage() {
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
             />
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Imagen (opcional, máx. 5 MB)</label>
+              <label className="block text-xs text-gray-500 mb-1">Imagen (opcional, máx. 2 MB)</label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files[0];
-                  setImageFile(file || null);
-                  setImagePreview(file ? URL.createObjectURL(file) : null);
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) {
+                    setError('La imagen no puede superar 2 MB.');
+                    e.target.value = '';
+                    return;
+                  }
+                  setError('');
+                  setImageFile(file);
+                  setImagePreview(URL.createObjectURL(file));
                 }}
                 className="w-full text-sm text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
               />

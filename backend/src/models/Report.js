@@ -6,7 +6,7 @@ const Report = sequelize.define('Report', {
   user_id: { type: DataTypes.INTEGER, allowNull: false },
   title: { type: DataTypes.STRING(200), allowNull: false },
   content: { type: DataTypes.TEXT, allowNull: false },
-  image_url: { type: DataTypes.STRING(500), allowNull: true },
+  image_url: { type: DataTypes.TEXT, allowNull: true },
 }, {
   tableName: 'reports',
   underscored: true,
