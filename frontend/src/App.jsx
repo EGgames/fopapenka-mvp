@@ -10,6 +10,7 @@ import RankingPage from './pages/RankingPage';
 import ChatPage from './pages/ChatPage';
 import AdminPage from './pages/AdminPage';
 import CreatePencaPage from './pages/CreatePencaPage';
+import ReportsPage from './pages/ReportsPage';
 
 const PrivateRoute = ({ children }) => {
   const token = useAuthStore((s) => s.token);
@@ -35,6 +36,7 @@ export default function App() {
       <Route path="/predictions" element={<PrivateRoute><PredictionsPage /></PrivateRoute>} />
       <Route path="/ranking" element={<PrivateRoute><RankingPage /></PrivateRoute>} />
       <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
+      <Route path="/reports" element={<PrivateRoute><ReportsPage /></PrivateRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

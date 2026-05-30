@@ -59,6 +59,7 @@ export default function DashboardPage() {
             { to: '/ranking', label: '🏆 Ranking', desc: 'Tabla de posiciones' },
             { to: '/calendar', label: '📅 Calendario', desc: 'Ver fechas y partidos' },
             { to: '/chat', label: '💬 Chat', desc: 'Charlar con los participantes' },
+            { to: '/reports', label: '📰 Auge Reportes', desc: 'Noticias de la comunidad' },
           ].map((item) => (
             <Link key={item.to} to={item.to}
               className="bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition">

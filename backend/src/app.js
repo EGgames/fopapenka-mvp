@@ -11,6 +11,7 @@ const matchRoutes = require('./routes/match.routes');
 const predictionRoutes = require('./routes/prediction.routes');
 const rankingRoutes = require('./routes/ranking.routes');
 const chatRoutes = require('./routes/chat.routes');
+const reportRoutes = require('./routes/report.routes');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/rankings', rankingRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/reports', reportRoutes);
 
 // 404
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));

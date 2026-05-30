@@ -1,0 +1,46 @@
+const { Report, User } = require('../models');
+
+const getAll = async () => {
+  return Report.findAll({
+    include: [{ model: User, attributes: ['id', 'nickname'] }],
+    order: [['created_at', 'DESC']],
+  });
+};
+
+const getById = async (id) => {
+  const report = await Report.findByPk(id, {
+    include: [{ model: User, attributes: ['id', 'nickname'] }],
+  });
+  if (!report) {
+    const err = new Error('Reporte no encontrado');
+    err.status = 404;
+    throw err;
+  }
+  return report;
+};
+
+const create = async (userId, { title, content, image_url }) => {
+  if (!title?.trim()) {
+    const err = new Error('El título es obligatorio');
+    err.status = 400;
+    throw err;
+  }
+  if (!content?.trim()) {
+    const err = new Error('El contenido es obligatorio');
+    err.status = 400;
+    throw err;
+  }
+  return Report.create({ user_id: userId, title: title.trim(), content: content.trim(), image_url: image_url || null });
+};
+
+const remove = async (id, userId, role) => {
+  const report = await getById(id);
+  if (report.user_id !== userId && role !== 'admin') {
+    const err = new Error('Sin permiso para eliminar este reporte');
+    err.status = 403;
+    throw err;
+  }
+  await report.destroy();
+};
+
+module.exports = { getAll, getById, create, remove };
