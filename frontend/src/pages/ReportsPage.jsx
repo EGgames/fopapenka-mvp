@@ -9,7 +9,9 @@ export default function ReportsPage() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', content: '', image_url: '' });
+  const [form, setForm] = useState({ title: '', content: '' });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,12 +34,17 @@ export default function ReportsPage() {
     }
     setSubmitting(true);
     try {
-      await api.post('/reports', {
-        title: form.title.trim(),
-        content: form.content.trim(),
-        image_url: form.image_url.trim() || null,
+      const formData = new FormData();
+      formData.append('title', form.title.trim());
+      formData.append('content', form.content.trim());
+      if (imageFile) formData.append('image', imageFile);
+
+      await api.post('/reports', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setForm({ title: '', content: '', image_url: '' });
+      setForm({ title: '', content: '' });
+      setImageFile(null);
+      setImagePreview(null);
       setShowForm(false);
       loadReports();
     } catch (err) {
@@ -89,13 +96,22 @@ export default function ReportsPage() {
               rows={4}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
             />
-            <input
-              type="url"
-              placeholder="URL de imagen (opcional)"
-              value={form.image_url}
-              onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Imagen (opcional, máx. 5 MB)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  setImageFile(file || null);
+                  setImagePreview(file ? URL.createObjectURL(file) : null);
+                }}
+                className="w-full text-sm text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+              />
+              {imagePreview && (
+                <img src={imagePreview} alt="preview" className="mt-2 rounded-lg h-32 object-cover w-full" />
+              )}
+            </div>
             <button
               type="submit"
               disabled={submitting}
