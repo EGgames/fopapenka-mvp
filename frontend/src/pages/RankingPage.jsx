@@ -32,10 +32,10 @@ export default function RankingPage() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto py-8 px-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">🏆 Ranking</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">🏆 Ranking</h2>
         <div className="flex gap-2 mb-4">
-          <button onClick={() => setTab('tournament')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'tournament' ? 'bg-green-600 text-white' : 'bg-white border'}`}>Por torneo</button>
-          <button onClick={() => setTab('accumulated')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'accumulated' ? 'bg-green-600 text-white' : 'bg-white border'}`}>Acumulado</button>
+          <button onClick={() => setTab('tournament')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'tournament' ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 dark:text-gray-200 border dark:border-gray-600'}`}>Por torneo</button>
+          <button onClick={() => setTab('accumulated')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'accumulated' ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 dark:text-gray-200 border dark:border-gray-600'}`}>Acumulado</button>
         </div>
         {tab === 'tournament' && tournaments.length > 1 && (
           <select value={selectedTournament} onChange={(e) => setSelectedTournament(e.target.value)} className="mb-4 border rounded-lg px-3 py-2">
@@ -43,8 +43,8 @@ export default function RankingPage() {
           </select>
         )}
         {loading ? <p>Cargando...</p> : (
-          <table className="w-full bg-white rounded-xl shadow-sm overflow-hidden">
-            <thead className="bg-green-50">
+          <table className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+            <thead className="bg-green-50 dark:bg-gray-700">
               <tr>
                 <th className="text-left px-4 py-2 text-sm">#</th>
                 <th className="text-left px-4 py-2 text-sm">Jugador</th>
@@ -59,9 +59,9 @@ export default function RankingPage() {
                   key={row.id}
                   data-testid={row.nickname === nickname ? 'my-ranking-row' : 'ranking-row'}
                   data-current-user={row.nickname === nickname ? 'true' : undefined}
-                  className={row.nickname === nickname ? 'bg-green-50 font-semibold' : ''}>
-                  <td className="px-4 py-3 text-gray-500">{medal || row.position}</td>
-                  <td className="px-4 py-3">{row.nickname} {row.nickname === nickname && '← vos'}</td>
+                  className={row.nickname === nickname ? 'bg-green-50 dark:bg-green-900/40 font-semibold' : 'dark:hover:bg-gray-700/50'}>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{medal || row.position}</td>
+                  <td className="px-4 py-3 dark:text-gray-100">{row.nickname} {row.nickname === nickname && '← vos'}</td>
                   <td className="px-4 py-3 text-right text-green-700 font-bold" data-testid="ranking-points">{row.points ?? row.total_points}</td>
                 </tr>
                 );
