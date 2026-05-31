@@ -13,7 +13,8 @@ export default function DashboardPage() {
     Promise.all([
       api.get('/predictions/mine').catch(() => ({ data: { predictions: [] } })),
       api.get('/tournaments').catch(() => ({ data: { tournaments: [] } })),
-    ]).then(async ([predRes, tourRes]) => {
+      api.get('/rankings/accumulated').catch(() => ({ data: { ranking: [] } })),
+    ]).then(async ([predRes, tourRes, accRes]) => {
       const active = tourRes.data.tournaments.find((t) => t.status === 'active');
       let myRank = null;
       if (active) {
@@ -24,9 +25,16 @@ export default function DashboardPage() {
       }
       const preds = predRes.data.predictions;
       const scored = preds.filter((p) => p.Score);
-      const totalPoints = scored.reduce((sum, p) => sum + (p.Score?.points || 0), 0);
       const exactas = scored.filter((p) => p.Score?.points === 3).length;
-      setStats({ totalPredictions: preds.length, totalPoints, exactas, rank: myRank });
+      const myAccumulated = accRes.data.ranking.find((r) => r.nickname === nickname);
+      setStats({
+        totalPredictions: preds.length,
+        tournamentPoints: myRank?.points ?? 0,
+        accumulatedPoints: myAccumulated?.total_points ?? 0,
+        exactas,
+        rank: myRank,
+        activeName: active?.name ?? null,
+      });
     });
   }, [nickname]);
 
@@ -37,10 +45,14 @@ export default function DashboardPage() {
         <p className="text-gray-500 mb-6">Penca: <span className="font-semibold text-green-600" data-testid="penca-name">{penca}</span></p>
 
         {stats && (
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <div className="bg-white border rounded-xl p-4 text-center shadow-sm">
-              <p className="text-2xl font-bold text-green-700">{stats.totalPoints}</p>
-              <p className="text-xs text-gray-500">Puntos</p>
+              <p className="text-2xl font-bold text-green-700">{stats.tournamentPoints}</p>
+              <p className="text-xs text-gray-500 leading-tight mt-0.5">Ptj. campeonato{stats.activeName && <><br /><span className="text-gray-400">{stats.activeName}</span></>}</p>
+            </div>
+            <div className="bg-white border rounded-xl p-4 text-center shadow-sm">
+              <p className="text-2xl font-bold text-blue-700">{stats.accumulatedPoints}</p>
+              <p className="text-xs text-gray-500 leading-tight mt-0.5">Ptj. acumulado</p>
             </div>
             <div className="bg-white border rounded-xl p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-green-700">{stats.exactas}</p>

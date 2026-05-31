@@ -34,7 +34,8 @@ const addComment = async (req, res, next) => {
     const comment = await reportService.addComment(
       Number(req.params.id),
       req.user.userId,
-      req.body.content
+      req.body.content,
+      req.body.parentId ? Number(req.body.parentId) : null
     );
     res.status(201).json({ comment });
   } catch (err) { next(err); }

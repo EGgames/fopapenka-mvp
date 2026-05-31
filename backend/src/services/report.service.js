@@ -13,13 +13,24 @@ const getById = async (id) => {
       { model: User, attributes: ['id', 'nickname'] },
       {
         model: ReportComment,
+        where: { parent_id: null },
+        required: false,
         include: [
           { model: User, attributes: ['id', 'nickname'] },
           { model: ReportCommentReaction, attributes: ['id', 'user_id', 'reaction'] },
+          {
+            model: ReportComment, as: 'Replies',
+            separate: true,
+            order: [['created_at', 'ASC']],
+            include: [
+              { model: User, attributes: ['id', 'nickname'] },
+              { model: ReportCommentReaction, attributes: ['id', 'user_id', 'reaction'] },
+            ],
+          },
         ],
-        order: [['created_at', 'ASC']],
       },
     ],
+    order: [[ReportComment, 'created_at', 'ASC']],
   });
   if (!report) {
     const err = new Error('Reporte no encontrado');
@@ -53,7 +64,7 @@ const remove = async (id, userId, role) => {
   await report.destroy();
 };
 
-const addComment = async (reportId, userId, content) => {
+const addComment = async (reportId, userId, content, parentId = null) => {
   if (!content?.trim()) {
     const err = new Error('El comentario no puede estar vacío');
     err.status = 400;
@@ -66,10 +77,19 @@ const addComment = async (reportId, userId, content) => {
   }
   // Verificar que el reporte existe
   await getById(reportId);
+  if (parentId) {
+    const parent = await ReportComment.findByPk(parentId);
+    if (!parent || Number(parent.report_id) !== Number(reportId)) {
+      const err = new Error('Comentario padre no encontrado');
+      err.status = 404;
+      throw err;
+    }
+  }
   const comment = await ReportComment.create({
     report_id: reportId,
     user_id: userId,
     content: content.trim(),
+    parent_id: parentId || null,
   });
   return ReportComment.findByPk(comment.id, {
     include: [

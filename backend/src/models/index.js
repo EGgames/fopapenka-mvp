@@ -80,6 +80,10 @@ ReportComment.belongsTo(Report, { foreignKey: 'report_id' });
 User.hasMany(ReportComment, { foreignKey: 'user_id' });
 ReportComment.belongsTo(User, { foreignKey: 'user_id' });
 
+// ReportComment -> Replies (self-referential)
+ReportComment.hasMany(ReportComment, { as: 'Replies', foreignKey: 'parent_id' });
+ReportComment.belongsTo(ReportComment, { as: 'Parent', foreignKey: 'parent_id' });
+
 // ReportComment -> ReportCommentReaction
 ReportComment.hasMany(ReportCommentReaction, { foreignKey: 'comment_id' });
 ReportCommentReaction.belongsTo(ReportComment, { foreignKey: 'comment_id' });

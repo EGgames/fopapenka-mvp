@@ -23,6 +23,9 @@ export default function ReportDetailPage() {
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // commentId
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
   const loadReport = () => {
     setLoading(true);
@@ -58,10 +61,34 @@ export default function ReportDetailPage() {
       await api.delete(`/reports/${id}/comments/${commentId}`);
       setReport((prev) => ({
         ...prev,
-        ReportComments: prev.ReportComments.filter((c) => c.id !== commentId),
+        ReportComments: prev.ReportComments
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({ ...c, Replies: (c.Replies ?? []).filter((r) => r.id !== commentId) })),
       }));
     } catch {
       alert('No se pudo eliminar el comentario.');
+    }
+  };
+
+  const handleReply = async (e, parentId) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    setSendingReply(true);
+    try {
+      const { data } = await api.post(`/reports/${id}/comments`, { content: replyText.trim(), parentId });
+      setReport((prev) => ({
+        ...prev,
+        ReportComments: prev.ReportComments.map((c) => {
+          if (c.id !== parentId) return c;
+          return { ...c, Replies: [...(c.Replies ?? []), data.comment] };
+        }),
+      }));
+      setReplyText('');
+      setReplyingTo(null);
+    } catch {
+      alert('Error al responder.');
+    } finally {
+      setSendingReply(false);
     }
   };
 
@@ -183,39 +210,116 @@ export default function ReportDetailPage() {
                 const dislikes = reactions.filter((r) => r.reaction === 'dislike').length;
                 const myReaction = reactions.find((r) => r.user_id === userId)?.reaction ?? null;
                 return (
-                  <div key={c.id} className="flex gap-3 px-4 py-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0 select-none">
-                      {(c.User?.nickname?.[0] ?? '?').toUpperCase()}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-gray-800">
-                        {c.User?.nickname ?? 'Anónimo'}
-                        <span className="font-normal text-gray-400 ml-2">{formatDate(c.createdAt)}</span>
-                      </p>
-                      <p className="text-sm text-gray-700 mt-0.5 mb-1.5">{c.content}</p>
-                      {/* Reacciones */}
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleReact(c.id, 'like')}
-                          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${myReaction === 'like' ? 'bg-blue-100 border-blue-400 text-blue-600 font-semibold' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-500'}`}
-                        >
-                          👍 {likes > 0 && <span>{likes}</span>}
-                        </button>
-                        <button
-                          onClick={() => handleReact(c.id, 'dislike')}
-                          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${myReaction === 'dislike' ? 'bg-red-100 border-red-400 text-red-600 font-semibold' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500'}`}
-                        >
-                          👎 {dislikes > 0 && <span>{dislikes}</span>}
-                        </button>
+                  <div key={c.id} className="px-4 py-3">
+                    {/* Comentario principal */}
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0 select-none">
+                        {(c.User?.nickname?.[0] ?? '?').toUpperCase()}
                       </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-gray-800">
+                          {c.User?.nickname ?? 'Anónimo'}
+                          <span className="font-normal text-gray-400 ml-2">{formatDate(c.createdAt)}</span>
+                        </p>
+                        <p className="text-sm text-gray-700 mt-0.5 mb-1.5">{c.content}</p>
+                        {/* Reacciones + Responder */}
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleReact(c.id, 'like')}
+                            className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${myReaction === 'like' ? 'bg-blue-100 border-blue-400 text-blue-600 font-semibold' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-500'}`}
+                          >
+                            👍 {likes > 0 && <span>{likes}</span>}
+                          </button>
+                          <button
+                            onClick={() => handleReact(c.id, 'dislike')}
+                            className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${myReaction === 'dislike' ? 'bg-red-100 border-red-400 text-red-600 font-semibold' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500'}`}
+                          >
+                            👎 {dislikes > 0 && <span>{dislikes}</span>}
+                          </button>
+                          <button
+                            onClick={() => { setReplyingTo(replyingTo === c.id ? null : c.id); setReplyText(''); }}
+                            className="text-xs text-gray-400 hover:text-green-500 transition"
+                          >
+                            💬 Responder
+                          </button>
+                        </div>
+                        {/* Formulario de respuesta inline */}
+                        {replyingTo === c.id && (
+                          <form onSubmit={(e) => handleReply(e, c.id)} className="flex gap-2 mt-2">
+                            <input
+                              type="text"
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              placeholder={`Responder a ${c.User?.nickname ?? 'Anónimo'}...`}
+                              maxLength={500}
+                              autoFocus
+                              className="flex-1 bg-white border rounded-full px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                            />
+                            <button
+                              type="submit"
+                              disabled={sendingReply || !replyText.trim()}
+                              className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-semibold hover:bg-green-700 transition disabled:opacity-40"
+                            >
+                              {sendingReply ? '...' : 'Enviar'}
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                      {(c.User?.nickname === nickname || role === 'admin') && (
+                        <button
+                          onClick={() => handleDeleteComment(c.id)}
+                          className="text-xs text-red-300 hover:text-red-500 transition self-start"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                    {(c.User?.nickname === nickname || role === 'admin') && (
-                      <button
-                        onClick={() => handleDeleteComment(c.id)}
-                        className="text-xs text-red-300 hover:text-red-500 transition self-start"
-                      >
-                        ✕
-                      </button>
+                    {/* Respuestas anidadas */}
+                    {(c.Replies ?? []).length > 0 && (
+                      <div className="ml-11 mt-2 space-y-2 border-l-2 border-gray-100 pl-3">
+                        {c.Replies.map((reply) => {
+                          const rReactions = reply.ReportCommentReactions ?? [];
+                          const rLikes = rReactions.filter((r) => r.reaction === 'like').length;
+                          const rDislikes = rReactions.filter((r) => r.reaction === 'dislike').length;
+                          const rMyReaction = rReactions.find((r) => r.user_id === userId)?.reaction ?? null;
+                          return (
+                            <div key={reply.id} className="flex gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs flex-shrink-0 select-none">
+                                {(reply.User?.nickname?.[0] ?? '?').toUpperCase()}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-xs font-semibold text-gray-800">
+                                  {reply.User?.nickname ?? 'Anónimo'}
+                                  <span className="font-normal text-gray-400 ml-2">{formatDate(reply.createdAt)}</span>
+                                </p>
+                                <p className="text-xs text-gray-700 mt-0.5 mb-1">{reply.content}</p>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleReact(reply.id, 'like')}
+                                    className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full border transition ${rMyReaction === 'like' ? 'bg-blue-100 border-blue-400 text-blue-600 font-semibold' : 'border-gray-200 text-gray-400 hover:border-blue-300 hover:text-blue-500'}`}
+                                  >
+                                    👍 {rLikes > 0 && <span>{rLikes}</span>}
+                                  </button>
+                                  <button
+                                    onClick={() => handleReact(reply.id, 'dislike')}
+                                    className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full border transition ${rMyReaction === 'dislike' ? 'bg-red-100 border-red-400 text-red-600 font-semibold' : 'border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-500'}`}
+                                  >
+                                    👎 {rDislikes > 0 && <span>{rDislikes}</span>}
+                                  </button>
+                                </div>
+                              </div>
+                              {(reply.User?.nickname === nickname || role === 'admin') && (
+                                <button
+                                  onClick={() => handleDeleteComment(reply.id)}
+                                  className="text-xs text-red-300 hover:text-red-500 transition self-start"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 );
