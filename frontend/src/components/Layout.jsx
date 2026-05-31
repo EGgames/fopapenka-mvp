@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { useChatNotifStore } from '../store/chatNotifStore';
 import { disconnectSocket, getSocket } from '../api/socket';
 import api from '../api/client';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 const navItems = [
   { to: '/', label: 'Inicio', icon: '🏠' },
@@ -106,14 +107,23 @@ export default function Layout({ children }) {
     navigate('/login');
   };
 
+  const [dark, toggleDark] = useDarkMode();
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 sm:pb-0">
-      <header className="bg-green-700 text-white px-4 py-3 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16 sm:pb-0">
+      <header className="bg-green-700 dark:bg-gray-800 text-white px-4 py-3 flex items-center justify-between">
         <Link to="/" className="text-xl font-bold">⚽ Fopapenka</Link>
-        <span className="text-green-200 text-sm" data-testid="penca-name">{penca}</span>
+        <span className="text-green-200 dark:text-gray-400 text-sm" data-testid="penca-name">{penca}</span>
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleDark}
+            title={dark ? 'Modo claro' : 'Modo oscuro'}
+            className="text-lg leading-none hover:scale-110 transition-transform"
+          >
+            {dark ? '☀️' : '🌙'}
+          </button>
           <span className="text-sm font-medium">{nickname}</span>
-          {role === 'admin' && <Link to="/admin" className="text-xs bg-white text-green-700 px-2 py-1 rounded font-semibold">Admin</Link>}
+          {role === 'admin' && <Link to="/admin" className="text-xs bg-white text-green-700 dark:bg-gray-700 dark:text-white px-2 py-1 rounded font-semibold">Admin</Link>}
           <button onClick={handleLogout} className="text-sm text-green-200 hover:text-white">Salir</button>
         </div>
       </header>
@@ -132,11 +142,11 @@ export default function Layout({ children }) {
           <button onClick={(e) => { e.stopPropagation(); useChatNotifStore.getState().hideToast(); }} className="text-green-200 hover:text-white text-lg ml-1">✕</button>
         </div>
       )}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t sm:hidden z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 sm:hidden z-50">
         <div className="flex justify-around">
           {navItems.map((item) => (
             <Link key={item.to} to={item.to}
-              className={`relative flex flex-col items-center py-2 px-3 text-xs ${pathname === item.to ? 'text-green-700 font-semibold' : 'text-gray-400'}`}>
+              className={`relative flex flex-col items-center py-2 px-3 text-xs ${pathname === item.to ? 'text-green-700 dark:text-green-400 font-semibold' : 'text-gray-400 dark:text-gray-500'}`}>
               <span className="text-lg">{item.icon}</span>
               {item.label}
               {item.to === '/chat' && unread > 0 && (
