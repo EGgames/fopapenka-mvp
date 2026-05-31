@@ -17,7 +17,7 @@ const formatDate = (d) => {
 export default function ReportDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { nickname, role } = useAuthStore(useShallow((s) => ({ nickname: s.nickname, role: s.role })));
+  const { nickname, role, userId } = useAuthStore(useShallow((s) => ({ nickname: s.nickname, role: s.role, userId: s.userId })));
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +72,31 @@ export default function ReportDetailPage() {
       navigate('/reports');
     } catch {
       alert('No se pudo eliminar el reporte.');
+    }
+  };
+
+  const handleReact = async (commentId, reaction) => {
+    try {
+      await api.post(`/reports/${id}/comments/${commentId}/react`, { reaction });
+      setReport((prev) => ({
+        ...prev,
+        ReportComments: prev.ReportComments.map((c) => {
+          if (c.id !== commentId) return c;
+          const reactions = c.ReportCommentReactions ?? [];
+          const existing = reactions.find((r) => r.user_id === userId);
+          let updated;
+          if (!existing) {
+            updated = [...reactions, { user_id: userId, reaction }];
+          } else if (existing.reaction === reaction) {
+            updated = reactions.filter((r) => r.user_id !== userId);
+          } else {
+            updated = reactions.map((r) => r.user_id === userId ? { ...r, reaction } : r);
+          }
+          return { ...c, ReportCommentReactions: updated };
+        }),
+      }));
+    } catch {
+      alert('No se pudo guardar la reacción.');
     }
   };
 
@@ -152,28 +177,49 @@ export default function ReportDetailPage() {
             {(report.ReportComments?.length ?? 0) === 0 ? (
               <p className="text-center text-gray-400 text-sm py-6">Sé el primero en comentar</p>
             ) : (
-              report.ReportComments.map((c) => (
-                <div key={c.id} className="flex gap-3 px-4 py-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0 select-none">
-                    {(c.User?.nickname?.[0] ?? '?').toUpperCase()}
+              report.ReportComments.map((c) => {
+                const reactions = c.ReportCommentReactions ?? [];
+                const likes = reactions.filter((r) => r.reaction === 'like').length;
+                const dislikes = reactions.filter((r) => r.reaction === 'dislike').length;
+                const myReaction = reactions.find((r) => r.user_id === userId)?.reaction ?? null;
+                return (
+                  <div key={c.id} className="flex gap-3 px-4 py-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0 select-none">
+                      {(c.User?.nickname?.[0] ?? '?').toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-gray-800">
+                        {c.User?.nickname ?? 'Anónimo'}
+                        <span className="font-normal text-gray-400 ml-2">{formatDate(c.createdAt)}</span>
+                      </p>
+                      <p className="text-sm text-gray-700 mt-0.5 mb-1.5">{c.content}</p>
+                      {/* Reacciones */}
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleReact(c.id, 'like')}
+                          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${myReaction === 'like' ? 'bg-blue-100 border-blue-400 text-blue-600 font-semibold' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-500'}`}
+                        >
+                          👍 {likes > 0 && <span>{likes}</span>}
+                        </button>
+                        <button
+                          onClick={() => handleReact(c.id, 'dislike')}
+                          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${myReaction === 'dislike' ? 'bg-red-100 border-red-400 text-red-600 font-semibold' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500'}`}
+                        >
+                          👎 {dislikes > 0 && <span>{dislikes}</span>}
+                        </button>
+                      </div>
+                    </div>
+                    {(c.User?.nickname === nickname || role === 'admin') && (
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="text-xs text-red-300 hover:text-red-500 transition self-start"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-gray-800">
-                      {c.User?.nickname ?? 'Anónimo'}
-                      <span className="font-normal text-gray-400 ml-2">{formatDate(c.createdAt)}</span>
-                    </p>
-                    <p className="text-sm text-gray-700 mt-0.5">{c.content}</p>
-                  </div>
-                  {(c.User?.nickname === nickname || role === 'admin') && (
-                    <button
-                      onClick={() => handleDeleteComment(c.id)}
-                      className="text-xs text-red-300 hover:text-red-500 transition self-start"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 

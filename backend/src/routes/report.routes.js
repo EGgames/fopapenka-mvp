@@ -13,5 +13,6 @@ router.delete('/:id', ctrl.remove);
 // Comentarios
 router.post('/:id/comments', ctrl.addComment);
 router.delete('/:id/comments/:commentId', ctrl.removeComment);
+router.post('/:id/comments/:commentId/react', ctrl.reactToComment);
 
 module.exports = router;

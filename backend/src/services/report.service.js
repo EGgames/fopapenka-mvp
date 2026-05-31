@@ -1,4 +1,4 @@
-const { Report, User, ReportComment } = require('../models');
+const { Report, User, ReportComment, ReportCommentReaction } = require('../models');
 
 const getAll = async () => {
   return Report.findAll({
@@ -13,7 +13,10 @@ const getById = async (id) => {
       { model: User, attributes: ['id', 'nickname'] },
       {
         model: ReportComment,
-        include: [{ model: User, attributes: ['id', 'nickname'] }],
+        include: [
+          { model: User, attributes: ['id', 'nickname'] },
+          { model: ReportCommentReaction, attributes: ['id', 'user_id', 'reaction'] },
+        ],
         order: [['created_at', 'ASC']],
       },
     ],
@@ -69,7 +72,10 @@ const addComment = async (reportId, userId, content) => {
     content: content.trim(),
   });
   return ReportComment.findByPk(comment.id, {
-    include: [{ model: User, attributes: ['id', 'nickname'] }],
+    include: [
+      { model: User, attributes: ['id', 'nickname'] },
+      { model: ReportCommentReaction, attributes: ['id', 'user_id', 'reaction'] },
+    ],
   });
 };
 
@@ -88,4 +94,32 @@ const removeComment = async (commentId, userId, role) => {
   await comment.destroy();
 };
 
-module.exports = { getAll, getById, create, remove, addComment, removeComment };
+const toggleReaction = async (commentId, userId, reaction) => {
+  if (!['like', 'dislike'].includes(reaction)) {
+    const err = new Error('Reacción inválida');
+    err.status = 400;
+    throw err;
+  }
+  const comment = await ReportComment.findByPk(commentId);
+  if (!comment) {
+    const err = new Error('Comentario no encontrado');
+    err.status = 404;
+    throw err;
+  }
+  const existing = await ReportCommentReaction.findOne({
+    where: { comment_id: commentId, user_id: userId },
+  });
+  if (existing) {
+    if (existing.reaction === reaction) {
+      await existing.destroy();
+      return { action: 'removed', reaction };
+    }
+    existing.reaction = reaction;
+    await existing.save();
+    return { action: 'updated', reaction };
+  }
+  await ReportCommentReaction.create({ comment_id: commentId, user_id: userId, reaction });
+  return { action: 'added', reaction };
+};
+
+module.exports = { getAll, getById, create, remove, addComment, removeComment, toggleReaction };

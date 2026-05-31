@@ -12,6 +12,7 @@ const ChatMessage = require('./ChatMessage');
 const ChatReadCursor = require('./ChatReadCursor');
 const Report = require('./Report');
 const ReportComment = require('./ReportComment');
+const ReportCommentReaction = require('./ReportCommentReaction');
 
 // Penca <-> User (muchos a muchos via PencaMembership)
 User.belongsToMany(Penca, { through: PencaMembership, foreignKey: 'user_id' });
@@ -79,6 +80,14 @@ ReportComment.belongsTo(Report, { foreignKey: 'report_id' });
 User.hasMany(ReportComment, { foreignKey: 'user_id' });
 ReportComment.belongsTo(User, { foreignKey: 'user_id' });
 
+// ReportComment -> ReportCommentReaction
+ReportComment.hasMany(ReportCommentReaction, { foreignKey: 'comment_id' });
+ReportCommentReaction.belongsTo(ReportComment, { foreignKey: 'comment_id' });
+
+// User -> ReportCommentReaction
+User.hasMany(ReportCommentReaction, { foreignKey: 'user_id' });
+ReportCommentReaction.belongsTo(User, { foreignKey: 'user_id' });
+
 module.exports = {
   sequelize,
   Penca,
@@ -94,4 +103,5 @@ module.exports = {
   ChatReadCursor,
   Report,
   ReportComment,
+  ReportCommentReaction,
 };

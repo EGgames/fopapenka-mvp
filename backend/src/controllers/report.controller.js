@@ -47,4 +47,15 @@ const removeComment = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { list, show, create, remove, addComment, removeComment };
+const reactToComment = async (req, res, next) => {
+  try {
+    const result = await reportService.toggleReaction(
+      Number(req.params.commentId),
+      req.user.userId,
+      req.body.reaction
+    );
+    res.json(result);
+  } catch (err) { next(err); }
+};
+
+module.exports = { list, show, create, remove, addComment, removeComment, reactToComment };
