@@ -33,6 +33,7 @@ export default function DashboardPage() {
         accumulatedPoints: myAccumulated?.total_points ?? 0,
         exactas,
         rank: myRank,
+        accumulatedRank: myAccumulated ?? null,
         activeName: active?.name ?? null,
       });
     });
@@ -45,7 +46,7 @@ export default function DashboardPage() {
         <p className="text-gray-500 mb-6">Penca: <span className="font-semibold text-green-600" data-testid="penca-name">{penca}</span></p>
 
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
             <div className="bg-white border rounded-xl p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-green-700">{stats.tournamentPoints}</p>
               <p className="text-xs text-gray-500 leading-tight mt-0.5">Ptj. campeonato{stats.activeName && <><br /><span className="text-gray-400">{stats.activeName}</span></>}</p>
@@ -60,7 +61,11 @@ export default function DashboardPage() {
             </div>
             <div className="bg-white border rounded-xl p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-green-700">{stats.rank?.position ?? '-'}</p>
-              <p className="text-xs text-gray-500">Posición</p>
+              <p className="text-xs text-gray-500 leading-tight mt-0.5">Posición{stats.activeName && <><br /><span className="text-gray-400">{stats.activeName}</span></>}</p>
+            </div>
+            <div className="bg-white border rounded-xl p-4 text-center shadow-sm col-span-2 sm:col-span-1">
+              <p className="text-2xl font-bold text-blue-700">{stats.accumulatedRank?.position ?? '-'}</p>
+              <p className="text-xs text-gray-500 leading-tight mt-0.5">Posición anual</p>
             </div>
           </div>
         )}
