@@ -116,15 +116,15 @@ export default function ReportsPage() {
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
             />
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Imagen (opcional, máx. 2 MB)</label>
+              <label className="block text-xs text-gray-500 mb-1">Imagen (opcional, máx. 3 MB)</label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (!file) return;
-                  if (file.size > 2 * 1024 * 1024) {
-                    setError('La imagen no puede superar 2 MB.');
+                  if (file.size > 3 * 1024 * 1024) {
+                    setError('La imagen no puede superar 3 MB.');
                     e.target.value = '';
                     return;
                   }
