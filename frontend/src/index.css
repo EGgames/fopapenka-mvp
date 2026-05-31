@@ -10,3 +10,32 @@
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
+
+/* ── Modo oscuro: overrides globales ────────────────────────── */
+.dark body {
+  background-color: rgb(17 24 39);    /* gray-900 */
+  color: rgb(229 231 235);             /* gray-200 */
+}
+.dark .bg-white {
+  background-color: rgb(31 41 55);    /* gray-800 */
+}
+.dark .bg-gray-50 {
+  background-color: rgb(17 24 39);    /* gray-900 */
+}
+.dark .border {
+  border-color: rgb(55 65 81);        /* gray-700 */
+}
+.dark .divide-y > * + * {
+  border-color: rgb(55 65 81);
+}
+.dark .text-gray-800 { color: rgb(243 244 246); }   /* gray-100 */
+.dark .text-gray-700 { color: rgb(229 231 235); }   /* gray-200 */
+.dark .text-gray-600 { color: rgb(209 213 219); }   /* gray-300 */
+.dark .text-gray-500 { color: rgb(156 163 175); }   /* gray-400 */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.dark textarea,
+.dark select {
+  background-color: rgb(55 65 81);    /* gray-700 */
+  color: rgb(243 244 246);
+  border-color: rgb(75 85 99);        /* gray-600 */
+}
